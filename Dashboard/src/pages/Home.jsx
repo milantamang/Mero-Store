@@ -21,11 +21,17 @@ const Home = () => {
           "http://localhost:5000/api/v1/products"
         );
         
+        const ordersRes = await axios.get("http://localhost:5000/api/v1/orders/count", { withCredentials: true });
+setStats({ 
+  ...stats,
+  orders: ordersRes.data.totalOrders || 0
+});
+
         // In a real app, you would fetch users and orders counts here too
         setStats({
           products: productsRes.data.totalProduct || 0,
-          users: 12, // Replace with actual API call
-          orders: 8  // Replace with actual API call
+          // users: usersRes.data.totalUsers || 0,
+          orders: ordersRes.data.totalOrders || 0,
         });
         
       } catch (error) {
