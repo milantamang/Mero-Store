@@ -1,0 +1,74 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap");
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    scroll-behavior: smooth;
+
+  
+}
+ul {
+    list-style: none;
+}
+a {
+    text-decoration: none;
+}
+body {
+    font-family: "Poppins", sans-serif;
+    overflow-x: hidden;
+}
+:root {
+    --brand:#FF407D;
+    --brandsec: #1B3C73;
+}
+
+/* Home Section Start */
+.pagination {
+    @apply flex items-center justify-center gap-2 mt-4  py-3;
+  }
+  
+  .pagination li {
+    @apply text-gray-600 text-sm cursor-pointer rounded-md transition-all border border-red-600;
+  }
+  
+  .pagination li a {
+    @apply block py-1 px-3  ;
+  }
+  
+  .pagination .active {
+    @apply bg-red-600 text-white;
+  }
+  
+  .pagination .prev,
+  .pagination .next {
+    @apply bg-gray-100 hover:bg-gray-200 text-gray-600;
+  }
+  
+  .pagination .prev:hover,
+  .pagination .next:hover {
+    @apply text-red-600;
+  }
+  
+  .pagination .break {
+    @apply text-gray-400;
+  }
+  
+
+
+
+
+  @keyframes scroll {
+    0% {
+      transform: translateX(100%);
+    }
+    100% {
+      transform: translateX(-100%);
+    }
+  }
+  
+  .animate-scroll {
+    display: inline-block;
+    white-space: nowrap;
+    animation: scroll 15s linear infinite;
+  }
+  

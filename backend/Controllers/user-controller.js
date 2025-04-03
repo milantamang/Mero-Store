@@ -1,0 +1,245 @@
+const User = require("../Models/UserSchema");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
+const nodemailer = require("nodemailer");
+const asyncHandler = require("express-async-handler");
+
+const JWT_SECRET = process.env.JWT_SECRETE;
+
+// admin login
+const adminLogin = (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (email === "admin@gmail.com" && password === "admin123") {
+      const admin_token = jwt.sign({ email }, JWT_SECRET, {
+        expiresIn: "3d",
+      });
+      res.status(200).json({ email, admin_token });
+    } else {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+// -------------------registration process-----------
+const userRegister = async (req, res) => {
+  try {
+    const { username, email, password } = req.body;
+    const oldUser = await User.findOne({ email });
+    if (oldUser) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+    const hashPassword = await bcrypt.hash(password, 12);
+    const result = await User.create({
+      username,
+      email,
+      password: hashPassword,
+    });
+    if (result) return res.status(200).json(result);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// -------------------login processs-------------
+const userLogin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ message: "User not found" });
+
+    const isPasswordCorrect = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordCorrect)
+      return res.status(400).json({ message: "Invalid credentials" });
+
+    const user_token = jwt.sign({ id: user._id }, JWT_SECRET, {
+      expiresIn: "3d",
+    });
+
+    return res.status(200).json({
+      _id: user.id,
+      name: user.username,
+      email: user.email,
+      image: user.image,
+      cartItems: user.cartItems.map((item) => ({ pid: item.product })),
+      user_token: user_token,
+   
+    });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+const Profile = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "No token provided" });
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findById(decoded.id).select("-password") .populate({
+      path: 'cartItems.product',
+      model: 'Product',
+      select: 'name price image category' // Select the fields you need
+    });;
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        cartItems: user.cartItems || [],
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
+
+
+// -------------------forgetpassword processs-------------
+const forgetpassword = asyncHandler(async (req, res) => {
+  try {
+    const { email } = req.body;
+    const existingUser = await User.findOne({ email });
+    if (!existingUser) {
+      return res.status(404).json({ error: "User not found in this email" });
+    }
+    const resetToken = jwt.sign(
+      { id: existingUser._id.toString() },
+      JWT_SECRET,
+      {
+        expiresIn: "4h",
+      }
+    );
+
+    // Set up Node Mailer transport
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: "sahanirakesh877@gmail.com",
+        pass: "pnvh gmbs hzrd wdzc",
+      },
+    });
+    const resetUrl = `http://localhost:5173/resetpassword/${existingUser._id}/${resetToken}`;
+
+    const mailOptions = {
+      from: "sahanirakesh877@gmail.com",
+      to: email,
+      subject: "Password Reset Request",
+      // text: ` http://localhost:5173/resetpassword/${existingUser._id}/${resetToken}`,
+      html: `
+        <h1>Password Reset Request</h1>
+        <p>Hello ${existingUser.username},</p>
+        <p>You have requested a password reset. Please click the following link to reset your password:</p>
+        <a href="${resetUrl}" style="color: blue; text-decoration: underline;">Reset Password</a>
+        <p>If you did not request this, please ignore this email.</p>
+      `,
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error(error);
+        return res.status(500).json({ error: "Email could not be sent" });
+      }
+      console.log("Email sent: " + info.response);
+      res
+        .status(200)
+        .json({ message: "Password reset link sent successfully" });
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// -------------------resetPassword processs-------------
+const resetPassword = asyncHandler(async (req, res) => {
+  try {
+    const { id, resetToken } = req.params;
+    const { password } = req.body;
+
+    console.log("Received ID:", id);
+    console.log("Received Token:", resetToken);
+
+    jwt.verify(resetToken, JWT_SECRET, async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ error: "Invalid or expired token" });
+      }
+
+      const user = await User.findById(decoded.id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+      user.password = hashedPassword;
+      await user.save();
+
+      res.status(200).json({ message: "Password reset successfully" });
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+//--------------------logout user-------------
+const logout = async (req, res, next) => {
+  res.cookie("token", null, {
+    expires: new Date(Date.now()),
+    httpOnly: true,
+  });
+  res.status(200).json({
+    success: true,
+    message: "Logout successfully",
+  });
+};
+// get all users
+const getAllUser = async (req, res) => {
+  try {
+    const user = await User.find();
+    if (!user) return res.status(400).json({ message: "User not found" });
+
+    return res.status(200).json({ message: "Users successfully", user });
+  } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+// delete a user
+const deleteUser = async (req, res) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    return res.status(200).json({ message: "User deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+module.exports = {
+  userRegister,
+  userLogin,
+  adminLogin,
+  logout,
+  deleteUser,
+  getAllUser,
+  forgetpassword,
+  resetPassword,
+  Profile,
+};
