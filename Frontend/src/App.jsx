@@ -36,7 +36,7 @@ import { useSelector } from "react-redux";
 import VerifyEmail from "./components/verifyEmail";
 import EditOrder from "./pages/Dashboard/EditOrder";
 import CustomerOrders from "./pages/CustomerOrders";
-import ChatBot from "./components/ChatBot";
+import ChatBot from "./components/Chatbot";
 
 function App() {
   const isLoggedIn = useSelector((state) => state.user.isLoggedIn);

@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import config from './config';
+import config from '../Configuration/config';
 
 // This file contains the service functions for interacting with Google's Gemini API
 

@@ -4,7 +4,7 @@
 const config = {
     // API Keys and credentials
     gemini: {
-      apiKey: process.env.REACT_APP_GEMINI_API_KEY || 'YOUR_GEMINI_API_KEY',
+      apiKey: (window.ENV && window.ENV.REACT_APP_GEMINI_API_KEY) || 'YOUR_GEMINI_API_KEY',
       modelName: 'gemini-2.0-flash', // Use the latest model
     },
     
