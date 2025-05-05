@@ -2,6 +2,7 @@ const express = require("express");
 const app = express();
 const cookieParser = require("cookie-parser");
 const createDefaultAdmin = require("./utils/createDefaultAdmin");
+const chatRouter = require("./Routes/ChatRoutes");
 require("dotenv").config();
 
 const cors = require("cors");
@@ -72,6 +73,9 @@ app.use("/api/v1", orderRouter);
 // home routes defined
 const homeRouter = require("./Routes/HomeRoutes");
 app.use("/api/v1", homeRouter);
+
+//chat routes
+app.use("/api/v1", chatRouter);
 
 // khalti payment
 app.use("/initiate-payment", async (req, res) => {

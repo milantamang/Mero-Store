@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "openai": "^4.97.0",
+    "react-icons": "^5.5.0"
+  }
+}
