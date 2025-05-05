@@ -7,7 +7,7 @@ import { getProducts } from "../redux/product/productSlice";
 import { toast } from "react-toastify";
 import { addToCart } from "../redux/cart/cartSlice";
 
-export default function Woman({ category: propCategory }) {
+export default function Women({ category: propCategory }) {
   const { products, error } = useSelector((state) => ({ ...state.products }));
   const { category: routeCategory } = useParams();
   const { isLoggedIn } = useSelector((state) => state.user);
@@ -48,21 +48,32 @@ export default function Woman({ category: propCategory }) {
   }, [error]);
 
   const addToCartHandler = (product) => {
-    if (isLoggedIn) {
-      console.log("User is logged in");
-      dispatch(
-        addToCart({
-          ...product,
-          product_id: product._id,
-          price: product.price,
-          qty: 1,
-        })
-      );
-    } else {
-      toast.error("Please log in to add items to the cart");
-      navigate("/login");
-    }
-  };
+        if (isLoggedIn) {
+          // Get the first size from the product.size array
+          const firstSize = product.size && product.size.length > 0 ? product.size[0] : null;
+    
+          if (!firstSize) {
+            toast.error("No size available for this product");
+            return;
+          }
+    
+          const cartItem = {
+            pid: product._id,
+            name: product.name,
+            price: product.price,
+            quantity: 1, 
+            category: product.category,
+            image: product.image,
+            size: firstSize,
+          };
+    
+          // Dispatch the addToCartAsync action
+          dispatch(addToCart(cartItem));
+        } else {
+          toast.error("Please log in to add to cart");
+          navigate("/login");
+        }
+      };
 
   useEffect(() => {
     if (products) {

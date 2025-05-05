@@ -3,32 +3,8 @@ const BACKEND_URL_REGISTER = "http://localhost:5000/api/v1/register";
 const BACKEND_URL_LOGIN = "http://localhost:5000/api/v1/login";
 const BACKEND_URL_LOGOUT = "http://localhost:5000/api/v1/logout";
 const BACKEND_URL_PROFILE = "http://localhost:5000/api/v1/profile";
-
-// Fetch User Profile
-// const getProfile = async () => {
-//   const token = localStorage.getItem("token");
-//   if (!token) {
-//     throw new Error("No token available");
-//   }
-//   const response = await axios.get(BACKEND_URL_PROFILE, {
-//     headers: {
-//       Authorization: `Bearer ${token}`,
-//     },
-//   });
-//   if (response.data.success) {
-//     return response.data.user;
-//   } else {
-//     throw new Error(response.data.message || "Failed to fetch profile");
-//   }
-// };
-// Login user
-// const login = async (userData) => {
-//   const response = await axios.post(BACKEND_URL_LOGIN, userData);
-//   if (response.data.token) {
-//     localStorage.setItem("token", response.data.token);
-//   }
-//   return response.data;
-// };
+const BACKEND_URL_VERIFICATION_REQUEST = "http://localhost:5000/api/v1/sendverificationemail";
+const BACKEND_URL_VERIFY_EMAIL = "http://localhost:5000/api/v1/verifyemail";
 
 // Login user
 const login = async (userData) => {
@@ -40,31 +16,19 @@ const login = async (userData) => {
   return response.data;
 };
 
-// Fetch User
-const getProfile = async () => {
-  let token = localStorage.getItem("token");
 
-  if (!token) {
-    const user = JSON.parse(localStorage.getItem("user")) || {};
-    token = user.user_token;
-  }
-
-  if (!token) {
-    throw new Error("No authentication token available");
-  }
-
-  const response = await axios.get(BACKEND_URL_PROFILE, {
+const updateProfile = async (profileData) => {
+  const token = localStorage.getItem("token");
+  const config = {
     headers: {
       Authorization: `Bearer ${token}`,
     },
-  });
+  };
 
-  if (response.data.success) {
-    return response.data.user;
-  } else {
-    throw new Error(response.data.message || "Failed to fetch profile");
-  }
+  const response = await axios.put(BACKEND_URL_PROFILE, profileData, config);
+  return response.data;
 };
+
 
 // register user
 const register = async (userData) => {
@@ -74,11 +38,28 @@ const register = async (userData) => {
   return response.data;
 };
 
-// Logout user
+ //Logout user
 const logout = async () => {
   const response = await axios.get(BACKEND_URL_LOGOUT);
   return response.data.message;
 };
 
-const authService = { register, login, logout, getProfile };
+const sendVerificationRequest = async (email) => {
+  const token = localStorage.getItem("token");
+   const config = {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+  const response = await axios.post(BACKEND_URL_VERIFICATION_REQUEST, {email} , config);
+  return response.data;
+}
+
+// Verify email
+const verifyEmail = async (userId, token) => {
+  const response = await axios.post(`${BACKEND_URL_VERIFY_EMAIL}/${userId}/${token}`);
+  return response.data;
+};
+
+const authService = { register, login, logout, updateProfile, sendVerificationRequest,verifyEmail };
 export default authService;

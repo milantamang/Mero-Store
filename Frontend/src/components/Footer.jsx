@@ -1,7 +1,7 @@
 
 const Footer = () => {
   return (
-    <footer className="bg-red-400 text-black py-8">
+    <footer className="bg-[#6B705C] text-black py-8">
       <div className="container mx-auto px-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* About Section */}

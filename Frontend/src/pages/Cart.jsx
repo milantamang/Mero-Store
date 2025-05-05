@@ -1,10 +1,12 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
-  increaseQuantity,
+  addToCart,
   clearCart,
   decreaseQuantity,
-  removeCartItem,
+  deleteCart,
+  fetchCart,
+  removeFromCart,
 } from "../redux/cart/cartSlice";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
@@ -16,39 +18,42 @@ const Cart = () => {
     ? JSON.parse(localStorage.getItem("user"))
     : [];
 
-  const { _id } = user;
 
   const { cartItems, cartError } = useSelector((state) => ({
     ...state.cart,
   }));
-  useEffect(() => {
-    if (!user) cartError && toast.error(cartError);
-  }, [user, cartError]);
+  
+   useEffect(() => {
+    dispatch(fetchCart());
+  }, [dispatch]);
 
-  function totalPrice() {
-    let x = 0;
-    // eslint-disable-next-line
-    cartItems.map((totalP) => {
-      x += totalP.price * totalP.qty;
-    });
-    return x;
-  }
-
-  const increaseQty = (id) => {
-    dispatch(increaseQuantity(id));
-    toast.success("Item quantity increased");
+  const increaseQty = (item) => {
+    
+    const updatedItem = {
+      ...item,
+      pid: item.product,
+      quantity: 1,
+    };
+    dispatch(addToCart(updatedItem));
   };
 
-  const decreaseQty = (id) => {
-    const item = cartItems.find((item) => item._id === id);
-    if (item.qty > 1) {
-      dispatch(decreaseQuantity(id));
-      toast.success("Item quantity decreased");
+  const decreaseQty = (id,quantity) => {
+    if (quantity > 1)
+    { dispatch(decreaseQuantity(id)); }
+    else {
+      // If quantity is 1, remove the item from the cart
+     removeItem(id)
     }
+   
   };
-
+  
   const removeItem = (id) => {
-    dispatch(removeCartItem(id));
+    if (cartItems.length === 1) {
+      // If only one item is in the cart, delete the entire cart
+      dispatch(deleteCart())
+    } else {
+      dispatch(removeFromCart(id))
+           }
   };
 
   // creatting order
@@ -61,6 +66,15 @@ const Cart = () => {
       navigate("/shipping");
     }
   };
+
+  function totalPrice() {
+    let x = 0;
+    // eslint-disable-next-line
+    cartItems.map((totalP) => {
+      x += totalP.price * totalP.quantity;
+    });
+    return x;
+  }
 
   return (
     <>
@@ -86,6 +100,7 @@ const Cart = () => {
               <thead className="whitespace-nowrap text-left">
                 <tr>
                   <th className="text-base text-primary p-4">Description</th>
+                  <th className="text-base text-primary p-4">Size</th> 
                   <th className="text-base text-primary p-4">Quantity</th>
                   <th className="text-base text-primary p-4">Price</th>
                 </tr>
@@ -112,7 +127,7 @@ const Cart = () => {
                                 <button
                                   type="button"
                                   className="mt-4 font-semibold text-red-400 text-sm"
-                                  onClick={() => removeItem(item._id)}
+                                  onClick={() => removeItem(item.product)}
                                 >
                                   Remove
                                 </button>
@@ -120,11 +135,20 @@ const Cart = () => {
                             </div>
                           </td>
                           <td className="py-6 px-4">
+                            <div>
+                                <p className="text-md font-bold text-[#333]">
+                                  {item.size}
+                                </p>
+
+                               
+                              </div>
+                          </td>
+                          <td className="py-6 px-4">
                             <div className="flex divide-x border w-max">
                               <button
                                 type="button"
                                 className="bg-gray-100 px-4 py-2 font-semibold"
-                                onClick={() => decreaseQty(item._id)}
+                                onClick={() => decreaseQty(item.product,item.quantity)}
                               >
                                 <svg
                                   xmlns="http://www.w3.org/2000/svg"
@@ -142,13 +166,13 @@ const Cart = () => {
                                 type="button"
                                 className="bg-transparent px-4 py-2 font-semibold text-[#333] text-md"
                               >
-                                <h3>{item.qty}</h3>
+                                <h3>{item.quantity}</h3>
                               </button>
 
                               <button
                                 type="button"
                                 className="bg-gray-800 text-white px-4 py-2 font-semibold"
-                                onClick={() => increaseQty(item._id)}
+                                onClick={() => increaseQty(item)}
                               >
                                 <svg
                                   xmlns="http://www.w3.org/2000/svg"
@@ -165,7 +189,7 @@ const Cart = () => {
                           </td>
                           <td className="py-6 px-4">
                             <h4 className="text-md font-bold text-[#333]">
-                              Rs. {item.price * item.qty}
+                              Rs. {item.price * item.quantity}
                             </h4>
                           </td>
                         </tr>
@@ -177,7 +201,7 @@ const Cart = () => {
             </table>
           </div>
           <button
-            onClick={() => dispatch(clearCart())}
+            onClick={() => dispatch(deleteCart())}
             className="p-3 bg-red-600 text-white text-md rounded-sm "
           >
             Clear All cart
@@ -197,16 +221,16 @@ const Cart = () => {
                   Rs. {totalPrice().toLocaleString()}.00
                 </span>
               </li>
-              <li className="flex flex-wrap gap-4 text-md py-4">
+              {/* <li className="flex flex-wrap gap-4 text-md py-4">
                 Shipping <span className="ml-auto font-bold">Rs. 200</span>
               </li>
               <li className="flex flex-wrap gap-4 text-md py-4">
                 Tax <span className="ml-auto font-bold">Rs. 100</span>
-              </li>
+              </li> */}
               <li className="flex flex-wrap gap-4 text-md py-4 font-bold">
                 Total{" "}
                 <span className="ml-auto">
-                  Rs. {(totalPrice() + 100 + 200).toLocaleString()}.00
+                  Rs. {(totalPrice() ).toLocaleString()}.00
                 </span>
               </li>
             </ul>

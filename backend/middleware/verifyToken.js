@@ -16,8 +16,9 @@ require("dotenv").config();
 };
 
  const verifyAdmin = (req, res, next) => {
-  verifyToken(req, res, () => {
-    if (req.user.email === "admin@gmail.com") {
+   verifyToken(req, res, () => {
+    
+    if (req.user.role === "admin") {
       next();
     } else {
       res.status(403).json({ message: "You are not admin" });

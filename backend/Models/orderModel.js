@@ -43,7 +43,7 @@ const orderSchema = mongoose.Schema({
         required: true,
       },
       size: {
-        type: String,
+        type: [String],
         required: true,
       },
       product: {
@@ -63,7 +63,7 @@ const orderSchema = mongoose.Schema({
   paymentInfo: {
     type: String,
     required: true,
-    default: "Cash On Delivered",
+    default: "Cash On Delivery",
   },
   paidAt: {
     type: Date,
@@ -92,7 +92,7 @@ const orderSchema = mongoose.Schema({
   orderStatus: {
     type: String,
     required: true,
-    default: "Delivered",
+    default: "Processing",
   },
   deliveredAt: Date,
   createdAt: {

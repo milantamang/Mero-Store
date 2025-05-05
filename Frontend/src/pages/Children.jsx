@@ -48,20 +48,32 @@ export default function Children({ category: propCategory }) {
   }, [error]);
 
   const addToCartHandler = (product) => {
-    if (isLoggedIn) {
-      dispatch(
-        addToCart({
-          ...product,
-          product_id: product._id,
-          price: product.price,
-          qty: 1,
-        })
-      );
-    } else {
-      toast.error("Please log in to add items to the cart");
-      navigate("/login");
-    }
-  };
+        if (isLoggedIn) {
+          // Get the first size from the product.size array
+          const firstSize = product.size && product.size.length > 0 ? product.size[0] : null;
+    
+          if (!firstSize) {
+            toast.error("No size available for this product");
+            return;
+          }
+    
+          const cartItem = {
+            pid: product._id,
+            name: product.name,
+            price: product.price,
+            quantity: 1, 
+            category: product.category,
+            image: product.image,
+            size: firstSize,
+          };
+    
+          // Dispatch the addToCartAsync action
+          dispatch(addToCart(cartItem));
+        } else {
+          toast.error("Please log in to add to cart");
+          navigate("/login");
+        }
+      };
 
   return (
     <div className="bg-gray-50 overflow-x-hidden py-10">

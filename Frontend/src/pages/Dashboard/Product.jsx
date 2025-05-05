@@ -44,11 +44,11 @@ const Product = () => {
   };
 
   const handleEdit = async (id) => {
-    navigate(`/editproduct/${id}`);
+    navigate(`/dashboard/editproduct/${id}`);
   };
 
   const addProducts = () => {
-    navigate("/addproducts");
+    navigate("/dashboard/addproducts");
   };
 
   return (

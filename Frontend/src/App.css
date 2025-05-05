@@ -1,11 +1,11 @@
 @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap");
+
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
     scroll-behavior: smooth;
-
-  
 }
 ul {
     list-style: none;
@@ -18,8 +18,8 @@ body {
     overflow-x: hidden;
 }
 :root {
-    --brand:#FF407D;
-    --brandsec: #1B3C73;
+    --brand:#A3B18A;
+    --brandsec: #C7CDAA;
 }
 
 /* Home Section Start */
@@ -70,5 +70,29 @@ body {
     display: inline-block;
     white-space: nowrap;
     animation: scroll 15s linear infinite;
+  }
+
+  .sidebar {
+    background-color:#7b2b2b;
+    color: white;
+    min-height: 100vh;
+  }
+  
+  .nav-link {
+    color: rgba(255, 255, 255, 0.8);
+    transition: all 0.3s;
+  }
+  
+  .nav-link:hover, .nav-link.active {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .nav-link:hover {
+    transform: translateX(5px);
+  }
+  
+  .btn-outline-light:hover {
+    background-color: rgba(255, 255, 255, 0.1);
   }
   

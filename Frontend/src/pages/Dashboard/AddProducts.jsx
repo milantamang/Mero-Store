@@ -1,11 +1,12 @@
-
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { CLOUDINARY_URL, UPLOAD_PRESET } from "../../utils/constants";
 
 const AddProducts = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
 
   const [productData, setProductData] = useState({
     name: "",
@@ -41,6 +42,36 @@ const AddProducts = () => {
       ...productData,
       [name]: value,
     });
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setImageUploading(true);
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", UPLOAD_PRESET); // Replace with your Cloudinary upload preset
+
+    try {
+      const response = await axios.post(CLOUDINARY_URL, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      const imageUrl = response.data.secure_url;
+      setProductData({
+        ...productData,
+        image: imageUrl,
+      });
+      toast.success("Image uploaded successfully");
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast.error("Failed to upload image");
+    } finally {
+      setImageUploading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -85,7 +116,7 @@ const AddProducts = () => {
           </div>
           <p className="text-muted mb-0 mt-1">Fill in the product details below</p>
         </div>
-        
+
         <div className="card-body">
           {loading && categories.length === 0 ? (
             <div className="text-center py-5">
@@ -114,17 +145,27 @@ const AddProducts = () => {
 
                   <div className="mb-4">
                     <label htmlFor="image" className="form-label fw-semibold">
-                      Image URL
+                      Upload Image
                     </label>
                     <input
-                      type="text"
+                      type="file"
                       className="form-control border-primary rounded-2 py-2"
                       id="image"
                       name="image"
-                      value={productData.image}
-                      onChange={handleChange}
+                      onChange={handleImageUpload}
                       required
                     />
+                    {imageUploading && (
+                      <div className="text-muted mt-2">Uploading image...</div>
+                    )}
+                    {productData.image && (
+                      <img
+                        src={productData.image}
+                        alt="Uploaded"
+                        className="mt-3 rounded border"
+                        style={{ width: "100px", height: "auto" }}
+                      />
+                    )}
                   </div>
 
                   <div className="row g-3 mb-4">
@@ -215,7 +256,7 @@ const AddProducts = () => {
                     <button
                       type="submit"
                       className="btn btn-primary py-2 rounded-2 fw-semibold"
-                      disabled={loading}
+                      disabled={loading || imageUploading}
                     >
                       {loading ? (
                         <>

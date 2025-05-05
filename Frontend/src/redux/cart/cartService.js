@@ -14,6 +14,31 @@ API.interceptors.request.use((req) => {
   return req;
 });
 
-export const createCart = (cartData) => API.post("/createcart", cartData);
-export const getUserCart = () => API.get("/getcart");
-export const deleteUserCart = (id, pid) => API.delete(`deletecart/${id}/${pid}`);
+export const addToCart = async (cartItem) => {
+  const response = await API.post("/addtocart", cartItem);
+  console.log(response.data);
+  return response.data; 
+};
+export const getUserCart = async () => {
+  const response = await API.get("/getcart"); 
+  return response.data; 
+  
+  
+}
+
+export const deleteCartItem = async (pid) => {
+  const response = await API.put(`/deletecartitem/${pid}`);
+  return response.data; 
+  
+  
+}
+
+export const deleteCart = async () => {
+  const response = await API.delete("/deletecart");
+  return response.data; 
+}
+
+export const decreaseQuantity = async (pid) => {
+  const response = await API.put(`/decreaseQuantity/${pid}`);
+  return response.data; 
+}

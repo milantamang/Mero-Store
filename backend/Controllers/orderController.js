@@ -14,6 +14,8 @@ const newOrder = asyncHandler(async (req, res, next) => {
     totalPrice,
   } = req.body;
 
+
+
   const order = await Order.create({
     shippingInfo,
     orderItems,
@@ -51,17 +53,14 @@ const getSingleOrder = asyncHandler(async (req, res, next) => {
 
 // get logedin user order   ( get user orders)
 const getLogedInUserOrder = asyncHandler(async (req, res, next) => {
-  const orders = await Order.find({ user: req.user.id });
-  res.status(200).json({
-    success: true,
-    orders,
-    message: " Loggin User Order found successfully",
-  });
+  const userId = req.user.id;
+const orders = await Order.find({ user: userId }).sort({ createdAt: -1 });  
+  res.status(200).json( orders);
 });
 
 // get all orders only admin
 const getAllOrdersAdmin = asyncHandler(async (req, res, next) => {
-  const orders = await Order.find();
+  const orders = await Order.find().sort({ createdAt: -1 });
   let totalAmount = 0;
   orders.forEach((order) => {
     totalAmount += order.totalPrice;
@@ -85,15 +84,7 @@ const updateOrdersAdmin = asyncHandler(async (req, res, next) => {
     });
   }
 
-  if (order.orderStatus === "Delivered") {
-    return res.status(200).json({
-      message: " you have  already  delivered  this order",
-    });
-  }
-  order.orderItems.forEach(async (ord) => {
-    await updateStock(ord.product, ord.quantity);
-  });
-  order.orderStatus = req.body.status;
+  order.orderStatus = req.body.orderStatus;
   if (req.body.status === "Delivered") {
     order.deliverAt = Date.now();
   }
@@ -107,8 +98,9 @@ const updateOrdersAdmin = asyncHandler(async (req, res, next) => {
   });
 });
 async function updateStock(id, quantity) {
+  console.log(id, quantity);
   const product = await Product.findById(id);
-  product.Stock = quantity;
+  product.Stock = product.Stock-quantity;
   await product.save({ validateBeforeSave: false });
 }
 
@@ -129,6 +121,28 @@ const deleteOrdersAdmin = asyncHandler(async (req, res, next) => {
   });
 });
 
+const cancelOrder = asyncHandler(async (req, res, next) => {
+  const order = await Order.findById(req.params.id);
+
+  if (!order) {
+    return res.status(404).json({
+      success: true,
+      message: " order not found by this id",
+    });
+  }
+
+  order.orderStatus = "Cancelled";
+  await order.save({
+    validateBeforeSave: false,
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Order cancelled successfully",
+  });
+})
+
+
 module.exports = {
   newOrder,
   getSingleOrder,
@@ -136,4 +150,5 @@ module.exports = {
   getAllOrdersAdmin,
   updateOrdersAdmin,
   deleteOrdersAdmin,
+  cancelOrder
 };

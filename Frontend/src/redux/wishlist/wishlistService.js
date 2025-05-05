@@ -8,7 +8,6 @@ API.interceptors.request.use((req) => {
   const userData = localStorage.getItem("user");
   if (userData) {
     const token = JSON.parse(userData).user_token;
-    console.log("Sending token:", token);
     req.headers.Authorization = `Bearer ${token}`;
   }
   return req;

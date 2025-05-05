@@ -15,4 +15,9 @@ API.interceptors.request.use((req) => {
 });
 
 export const createOrder = (orderData) => API.post("/neworder", orderData);
+
 export const userOrders = () => API.get("/myorders");
+
+export const cancelOrder = (orderId) => API.delete(`/cancelorder/${orderId}`);
+
+

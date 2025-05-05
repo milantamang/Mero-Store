@@ -1,13 +1,14 @@
-
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { MdDelete, MdAddCircleOutline } from "react-icons/md";
+import { CLOUDINARY_URL, UPLOAD_PRESET } from "../../utils/constants";
 
 const AddOffer = () => {
   const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [addingOffer, setAddingOffer] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
 
   const [productData, setProductData] = useState({
     name: "",
@@ -25,7 +26,7 @@ const AddOffer = () => {
         },
       };
       const response = await axios.get(
-        "http://localhost:5000/api/v1/getoffers",
+        "http://localhost:5000/api/v1/getalloffers",
         config
       );
       setOffers(response.data.homeOffer || []);
@@ -37,9 +38,35 @@ const AddOffer = () => {
     }
   };
 
+    const toggleOfferStatus = async (id, currentStatus) => {
+      try {
+      
+      const token = localStorage.getItem("token");
+      const config = {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      };
+      const response = await axios.put(
+        `http://localhost:5000/api/v1/updateofferstatus/${id}`,
+        { status: !currentStatus }, // Toggle the status
+        config
+      );
+      toast.success("Offer status updated successfully");
+      setOffers(
+        offers.map((offer) =>
+          offer._id === id ? { ...offer, status: !currentStatus } : offer
+        )
+      );
+    } catch (error) {
+      console.error("Error updating offer status:", error);
+      toast.error("Failed to update offer status");
+    }
+  };
+
   const deleteOffer = async (id) => {
     if (!window.confirm("Are you sure you want to delete this offer?")) return;
-    
+
     try {
       const token = localStorage.getItem("token");
       const config = {
@@ -65,6 +92,36 @@ const AddOffer = () => {
       ...productData,
       [name]: value,
     });
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setImageUploading(true);
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", UPLOAD_PRESET); // Replace with your Cloudinary upload preset
+
+    try {
+      const response = await axios.post(CLOUDINARY_URL, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      const imageUrl = response.data.secure_url;
+      setProductData({
+        ...productData,
+        image: imageUrl,
+      });
+      toast.success("Image uploaded successfully");
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast.error("Failed to upload image");
+    } finally {
+      setImageUploading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -148,24 +205,34 @@ const AddOffer = () => {
 
                 <div className="mb-4">
                   <label htmlFor="image" className="form-label fw-semibold">
-                    Image URL
+                    Upload Image
                   </label>
                   <input
-                    type="text"
+                    type="file"
                     className="form-control border-primary rounded-2 py-2"
                     id="image"
                     name="image"
-                    value={productData.image}
-                    onChange={handleChange}
+                    onChange={handleImageUpload}
                     required
                   />
+                  {imageUploading && (
+                    <div className="text-muted mt-2">Uploading image...</div>
+                  )}
+                  {productData.image && (
+                    <img
+                      src={productData.image}
+                      alt="Uploaded"
+                      className="mt-3 rounded border"
+                      style={{ width: "100px", height: "auto" }}
+                    />
+                  )}
                 </div>
 
                 <div className="d-grid pt-2">
                   <button
                     type="submit"
                     className="btn btn-primary py-2 rounded-2 fw-semibold"
-                    disabled={addingOffer}
+                    disabled={addingOffer || imageUploading}
                   >
                     {addingOffer ? (
                       <>
@@ -193,7 +260,7 @@ const AddOffer = () => {
             <h4 className="mb-0 fw-bold text-danger">Current Offers</h4>
           </div>
           <p className="text-muted mb-0 mt-1">
-            {offers.length} active {offers.length === 1 ? 'offer' : 'offers'}
+            {offers.length} active {offers.length === 1 ? "offer" : "offers"}
           </p>
         </div>
         <div className="card-body">
@@ -212,6 +279,7 @@ const AddOffer = () => {
                     <th scope="col">Title</th>
                     <th scope="col">Offer</th>
                     <th scope="col">Image</th>
+                    <th scope="col" className="text-end">Status</th>
                     <th scope="col" className="text-end pe-4">Action</th>
                   </tr>
                 </thead>
@@ -235,6 +303,16 @@ const AddOffer = () => {
                           style={{ width: "80px", height: "auto" }}
                         />
                       </td>
+                       <td>
+                        <button
+                          className={`btn btn-sm ${
+                            offer.status ? "btn-success" : "btn-secondary"
+                          }`}
+                          onClick={() => toggleOfferStatus(offer._id, offer.status)}
+                        >
+                          {offer.status ? "On" : "Off"}
+                        </button>
+                      </td>
                       <td className="text-end pe-4">
                         <button
                           className="btn btn-sm btn-outline-danger d-flex align-items-center gap-1"
@@ -251,9 +329,15 @@ const AddOffer = () => {
             </div>
           ) : (
             <div className="text-center py-5">
-              <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="#6c757d" viewBox="0 0 16 16">
-                <path d="M7.5 1v7h1V1h-1z"/>
-                <path d="M3 8.812a4.999 4.999 0 0 1 2.578-4.375l-.485-.874A6 6 0 1 0 11 3.616l-.501.865A5 5 0 1 1 3 8.812z"/>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="64"
+                height="64"
+                fill="#6c757d"
+                viewBox="0 0 16 16"
+              >
+                <path d="M7.5 1v7h1V1h-1z" />
+                <path d="M3 8.812a4.999 4.999 0 0 1 2.578-4.375l-.485-.874A6 6 0 1 0 11 3.616l-.501.865A5 5 0 1 1 3 8.812z" />
               </svg>
               <h5 className="text-muted mt-3">No active offers</h5>
             </div>

@@ -19,7 +19,6 @@ const BannerCarosel = () => {
         const response = await axios.get(
           "http://localhost:5000/api/v1/getoffers"
         );
-        console.log("home response", response);
         setBanners(response.data.homeOffer);
       } catch (error) {
         console.error("Error fetching banner data:", error);

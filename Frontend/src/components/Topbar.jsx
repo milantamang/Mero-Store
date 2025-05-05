@@ -22,7 +22,7 @@ const Topbar = () => {
   const dropdownRef = useRef(null);
 
   // Cart and Wishlist Counts
-  const cartLength = cartItems.reduce((total, item) => total + item.qty, 0);
+  const cartLength = cartItems.reduce((total, item) => total + item.quantity, 0);
   const wish = wishitems.length;
 
   // Logout Function
@@ -109,11 +109,19 @@ const Topbar = () => {
                         Profile
                       </Link>
                     </li>
+                     <li>
+                      <Link
+                        to="/orders"
+                        className="block px-4 border-b py-2 text-white hover:bg-gray-100 hover:text-red-500"
+                      >
+                        My Orders
+                      </Link>
+                    </li>
                   
                     <li>
                       <button
                         onClick={logoutUser}
-                        className="block w-100 px-4  py-2 text-white hover:bg-gray-100 hover:text-red-500"
+                        className="block px-4  py-2 text-white hover:bg-gray-100 hover:text-red-500"
                       >
                         Logout
                       </button>

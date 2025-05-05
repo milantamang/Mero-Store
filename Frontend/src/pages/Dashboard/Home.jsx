@@ -18,20 +18,14 @@ const Home = () => {
         
         // Fetch products count
         const productsRes = await axios.get(
-          "http://localhost:5000/api/v1/products"
+          "http://localhost:5000/api/v1/home/getTotals"
         );
-        
-        const ordersRes = await axios.get("http://localhost:5000/api/v1/orders/count", { withCredentials: true });
-setStats({ 
-  ...stats,
-  orders: ordersRes.data.totalOrders || 0
-});
-
+        console.log(productsRes.data);
         // In a real app, you would fetch users and orders counts here too
         setStats({
-          products: productsRes.data.totalProduct || 0,
-          // users: usersRes.data.totalUsers || 0,
-          orders: ordersRes.data.totalOrders || 0,
+          products: productsRes.data.totalProducts,
+          users: productsRes.data.totalUsers,
+          orders: productsRes.data.totalOrders  
         });
         
       } catch (error) {
@@ -48,7 +42,7 @@ setStats({
     <div className="container-fluid px-4 py-4">
       <div className="card shadow-sm border-0 mb-4">
         <div className="card-header bg-white border-0 pt-3">
-          <h4 className="mb-0 fw-bold text-danger">Dashboard Overview</h4>
+          <h4 style={{ color: "#7b2b2b" }} className="mb-0 fw-bold  ">Dashboard Overview</h4>
           <p className="text-muted mb-0 mt-1">Welcome to Mero Store Admin Panel</p>
         </div>
       </div>
@@ -71,7 +65,7 @@ setStats({
                   </div>
                   <div>
                     <h6 className="mb-0 text-muted">Total Users</h6>
-                    <h3 className="mb-0 fw-bold">{stats.users}+</h3>
+                    <h3 className="mb-0 fw-bold">{stats.users}</h3>
                   </div>
                 </div>
                 <div className="mt-auto">
@@ -123,7 +117,7 @@ setStats({
                   </div>
                   <div>
                     <h6 className="mb-0 text-muted">Total Orders</h6>
-                    <h3 className="mb-0 fw-bold">{stats.orders}+</h3>
+                    <h3 className="mb-0 fw-bold">{stats.orders}</h3>
                   </div>
                 </div>
                 <div className="mt-auto">

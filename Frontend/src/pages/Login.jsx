@@ -5,12 +5,13 @@ import "react-toastify/dist/ReactToastify.css";
 
 import { useDispatch, useSelector } from "react-redux";
 import { RESET_AUTH, login } from "../redux/user/userSlice";
+import { fetchCart } from "../redux/cart/cartSlice";
 
 const Login = () => {
   const dispatch = useDispatch();
   const location = useLocation();
   const navigate = useNavigate();
-  const { isLoggedIn, isLoading, isSuccess } = useSelector(
+  const { isLoggedIn, isLoading, isSuccess,user } = useSelector(
     (state) => state.user
   );
   const [formData, setFormData] = useState({
@@ -38,9 +39,15 @@ const Login = () => {
   };
   useEffect(() => {
     if (isSuccess && isLoggedIn) {
-      navigate("/");
+      dispatch(fetchCart());
+      if (user?.user_role === "admin") {
+        // Redirect to the dashboard application
+        navigate("/dashboard");
+      } else {
+        // Redirect to the main application
+        navigate("/");
+      }
     }
-   
     dispatch(RESET_AUTH());
     window.scrollTo(0, 0);
   }, [isSuccess, isLoggedIn, dispatch, navigate]);

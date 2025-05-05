@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import { CLOUDINARY_URL, UPLOAD_PRESET } from "../../utils/Constants"
 
 const EditProduct = () => {
   const navigate = useNavigate();
@@ -10,6 +10,7 @@ const EditProduct = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [uploading, setUploading] = useState(false); // For image upload status
 
   const [productData, setProductData] = useState({
     name: "",
@@ -17,7 +18,7 @@ const EditProduct = () => {
     colors: "",
     price: "",
     category: "",
-    size: []
+    size: [],
   });
 
   useEffect(() => {
@@ -45,7 +46,7 @@ const EditProduct = () => {
         const product = response.data;
         setProductData({
           ...product,
-          size: product.size || []
+          size: product.size || [],
         });
       } catch (error) {
         console.error("Error fetching product:", error);
@@ -76,6 +77,34 @@ const EditProduct = () => {
     }));
   };
 
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", UPLOAD_PRESET); // Replace with your Cloudinary upload preset
+
+    try {
+      setUploading(true);
+      const response = await axios.post(
+       CLOUDINARY_URL, // Replace with your Cloudinary URL
+        formData
+      );
+      const imageUrl = response.data.secure_url;
+      setProductData((prevData) => ({
+        ...prevData,
+        image: imageUrl,
+      }));
+      toast.success("Image uploaded successfully");
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast.error("Failed to upload image");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setUpdating(true);
@@ -94,7 +123,7 @@ const EditProduct = () => {
         config
       );
       toast.success("Product updated successfully");
-      navigate('/products');
+      navigate("/dashboard/products");
     } catch (error) {
       console.error("Error updating product:", error);
       toast.error("Failed to update product");
@@ -114,7 +143,11 @@ const EditProduct = () => {
             <p className="text-muted mb-0 mt-1">Loading product details...</p>
           </div>
           <div className="card-body text-center py-5">
-            <div className="spinner-border text-primary" style={{ width: '3rem', height: '3rem' }} role="status">
+            <div
+              className="spinner-border text-primary"
+              style={{ width: "3rem", height: "3rem" }}
+              role="status"
+            >
               <span className="visually-hidden">Loading...</span>
             </div>
           </div>
@@ -130,9 +163,11 @@ const EditProduct = () => {
           <div className="d-flex justify-content-between align-items-center">
             <h3 className="mb-0 fw-bold text-primary">Edit Product</h3>
           </div>
-          <p className="text-muted mb-0 mt-1">Update the product details below</p>
+          <p className="text-muted mb-0 mt-1">
+            Update the product details below
+          </p>
         </div>
-        
+
         <div className="card-body">
           <div className="row justify-content-center">
             <div className="col-lg-8">
@@ -154,17 +189,27 @@ const EditProduct = () => {
 
                 <div className="mb-4">
                   <label htmlFor="image" className="form-label fw-semibold">
-                    Image URL
+                    Image
                   </label>
                   <input
-                    type="text"
+                    type="file"
                     className="form-control border-primary rounded-2 py-2"
                     id="image"
                     name="image"
-                    value={productData.image}
-                    onChange={handleChange}
-                    required
+                    onChange={handleImageUpload}
+                    accept="image/*"
                   />
+                  {uploading && (
+                    <div className="text-muted mt-2">Uploading image...</div>
+                  )}
+                  {productData.image && (
+                    <img
+                      src={productData.image}
+                      alt="Uploaded"
+                      className="img-fluid mt-3"
+                      style={{ maxHeight: "200px" }}
+                    />
+                  )}
                 </div>
 
                 <div className="row g-3 mb-4">
@@ -184,7 +229,10 @@ const EditProduct = () => {
                   </div>
 
                   <div className="col-md-6">
-                    <label htmlFor="category" className="form-label fw-semibold">
+                    <label
+                      htmlFor="category"
+                      className="form-label fw-semibold"
+                    >
                       Category
                     </label>
                     <select
@@ -195,7 +243,9 @@ const EditProduct = () => {
                       onChange={handleChange}
                       required
                     >
-                      <option value="" disabled>Select a category</option>
+                      <option value="" disabled>
+                        Select a category
+                      </option>
                       {categories.map((category) => (
                         <option key={category._id} value={category.name}>
                           {category.name}
@@ -222,7 +272,9 @@ const EditProduct = () => {
                 </div>
 
                 <div className="mb-4">
-                  <label className="form-label fw-semibold">Available Sizes</label>
+                  <label className="form-label fw-semibold">
+                    Available Sizes
+                  </label>
                   <div className="d-flex flex-wrap gap-3">
                     {["S", "M", "L", "XL", "XXL"].map((size) => (
                       <div key={size} className="form-check">
@@ -235,7 +287,10 @@ const EditProduct = () => {
                           checked={productData.size.includes(size)}
                           onChange={handleSizeChange}
                         />
-                        <label htmlFor={size} className="form-check-label ps-2">
+                        <label
+                          htmlFor={size}
+                          className="form-check-label ps-2"
+                        >
                           {size}
                         </label>
                       </div>
@@ -251,7 +306,11 @@ const EditProduct = () => {
                   >
                     {updating ? (
                       <>
-                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <span
+                          className="spinner-border spinner-border-sm me-2"
+                          role="status"
+                          aria-hidden="true"
+                        ></span>
                         Updating...
                       </>
                     ) : (

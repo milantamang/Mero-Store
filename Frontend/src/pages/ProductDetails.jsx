@@ -11,7 +11,6 @@ const ProductDetails = () => {
   const [selectedSize, setSelectedSize] = useState("");
   const dispatch = useDispatch();
   const [quantity, setQuantity] = useState(1);
-  const [cartItems, setCartItems] = useState([]);
 
   const { id } = useParams();
 
@@ -64,17 +63,17 @@ const ProductDetails = () => {
     }
 
     if (isLoggedIn) {
-      if (cartItems.length < 3) {
-        setCartItems([...cartItems, { ...product, size: selectedSize }]);
-        dispatch(addToCart({ ...product, size: selectedSize, qty: quantity }));
-      } else {
-        toast.error("Only 3 Products are in Stock");
-      }
-    } else {
-      toast.error("Please log in to add to cart");
-      navigate("/login");
-    }
-  };
+    // Check if the product with the same size is already in the cart
+    
+      const newCartItem = { ...product,pid: product._id, size: selectedSize, quantity: quantity };
+      
+      dispatch(addToCart(newCartItem));
+    
+  } else {
+    toast.error("Please log in to add to cart");
+    navigate("/login");
+  }
+};
 
   return (
     <>

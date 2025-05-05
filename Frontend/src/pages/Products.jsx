@@ -3,28 +3,24 @@ import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { FaCartArrowDown } from "react-icons/fa";
 import { FaHeart } from "react-icons/fa6";
-import { getProducts, searchProduct } from "../redux/product/productSlice";
-import axios from "axios";
+import { getProducts } from "../redux/product/productSlice";
 import { toast } from "react-toastify";
 import { addToCart } from "../redux/cart/cartSlice";
 import ReactPaginate from "react-paginate";
 import { addToWishlist } from "../redux/wishlist/wishlistSlice";
-
+import axios from "axios";
 
 export default function Products() {
   const { products, error } = useSelector((state) => ({ ...state.products }));
-    const { wishitems } = useSelector((state) => ({ ...state.wishlist }));
-  
-  const [quantity, setQuantity] = useState(1);
-  const [list, setList] = useState(products);
-  const { isLoggedIn } = useSelector((state) => state.user);
+  const { wishitems } = useSelector((state) => ({ ...state.wishlist }));
+  const { isLoggedIn,user } = useSelector((state) => state.user);
 
+  const [list, setList] = useState(products);
   const [categories, setCategories] = useState();
   const [selectedCategory, setSelectedCategory] = useState();
   const [priceRange, setPriceRange] = useState();
   const [price, setPrice] = useState();
   const [keywords, setKeywords] = useState("");
-  const [cartItems, setCartItems] = useState([]);
   const [currentPage, setCurrentPage] = useState(0);
   const itemsPerPage = 6;
 
@@ -42,29 +38,33 @@ export default function Products() {
 
   useEffect(() => {
     dispatch(getProducts());
-  }, []);
+  }, [dispatch]);
+
   useEffect(() => {
     setList(products);
   }, [products]);
-  useEffect(() => {}, [selectedCategory, priceRange, list]);
 
-  //  search products  function by query string
   useEffect(() => {
-    if (products) {
-      const filteredProducts = products.filter((product) =>
-        product.name.toLowerCase().includes(keywords.toLowerCase())
-      );
-      if (selectedCategory) {
-        setList(
-          filteredProducts.filter((item) => item.category === selectedCategory)
-        );
-      } else {
-        setList(filteredProducts);
-      }
+    if (error) {
+      toast.error(error);
     }
-  }, [keywords, selectedCategory, products]);
+  }, [error]);
 
-  // get categorys
+    useEffect(() => {
+        if (products) {
+          const filteredProducts = products.filter((product) =>
+            product.name.toLowerCase().includes(keywords.toLowerCase())
+          );
+          if (selectedCategory) {
+            setList(
+              filteredProducts.filter((item) => item.category === selectedCategory)
+            );
+          } else {
+            setList(filteredProducts);
+          }
+        }
+    }, [keywords, selectedCategory, products]);
+  
   useEffect(() => {
     const getCategories = async () => {
       const response = await axios.get(
@@ -75,12 +75,12 @@ export default function Products() {
     getCategories();
   }, []);
 
-  const filterCategory = (cat_name) => {
+   const filterCategory = (cat_name) => {
     setSelectedCategory(cat_name);
   };
 
   // price filter
-  const handlePrice = (e) => {
+   const handlePrice = (e) => {
     setPrice(e.target.value);
     setPriceRange(e.target.value);
 
@@ -110,51 +110,60 @@ export default function Products() {
     applIFilters();
   }, [products, selectedCategory]);
 
-  useEffect(() => {
-    if (error) {
-      toast.error(error);
-    }
-  }, [error, toast]);
-
-  // add to cart handler
+  
+  // Add to cart handler
   const addToCartHandler = (product) => {
     if (isLoggedIn) {
-      if (cartItems.length < 3) {
-        setCartItems([...cartItems, product]);
-        dispatch(
-          addToCart({ ...product, product_id: product._id, qty: quantity })
-        );
-      } else {
-        toast.error("Only 3 Products are in Stock");
+     /*  if (user.email_verified === false) {
+        toast.error("Please verify your account to add to cart");
+        return;
+      } */
+      // Get the first size from the product.size array
+      const firstSize = product.size && product.size.length > 0 ? product.size[0] : null;
+      
+      if (!firstSize) {
+        toast.error("No size available for this product");
+        return;
       }
+
+      const cartItem = {
+        pid: product._id,
+        name: product.name,
+        price: product.price,
+        quantity: 1, 
+        category: product.category,
+        image: product.image,
+        size: firstSize,
+      };
+
+      // Dispatch the addToCartAsync action
+      dispatch(addToCart(cartItem));
     } else {
-      toast.error("Please log to add cart");
+      toast.error("Please log in to add to cart");
       navigate("/login");
     }
   };
 
+  // Add to wishlist
+  const addWishlist = (product) => {
+    if (isProductInWishlist(product._id)) {
+      toast.error("Product already added to wishlist");
+    } else {
+      dispatch(
+        addToWishlist({
+          product_name: product.name,
+          product_price: product.price,
+          product_category: product.category,
+          product_image: product.image,
+        })
+      );
+    }
+  };
 
-   // add to wishlist
- 
-const addWishlist = (product) => {
-  if (isProductInWishlist(product._id)) {
-    toast.error("Product already added to wishlist");
-  } else {
-    dispatch(
-      addToWishlist({
-        product_name: product.name,
-        product_price: product.price,
-        product_category: product.category,
-        product_image: product.image,
-      })
-    );
-  }
-};
-
-// Check if the product is already in the wishlist
-const isProductInWishlist = (productId) => {
-  return wishitems.some((item) => item.product_id === productId);
-};
+  // Check if the product is already in the wishlist
+  const isProductInWishlist = (productId) => {
+    return wishitems.some((item) => item.product_id === productId);
+  };
 
   const startIndex = currentPage * itemsPerPage;
   const selectedProducts = list.slice(startIndex, startIndex + itemsPerPage);
@@ -178,7 +187,7 @@ const isProductInWishlist = (productId) => {
                 name="search"
                 value={keywords}
                 onChange={(e) => setKeywords(e.target.value)}
-                className="w-[600px]  py-2 text-center shadow border-primary  "
+                className="w-[600px] py-2 text-center shadow border-primary"
                 placeholder="Search products"
               />
               <button
@@ -192,28 +201,27 @@ const isProductInWishlist = (productId) => {
 
           <section aria-labelledby="products-heading" className="pb-24 pt-2">
             <div className="grid grid-cols-1 gap-x-8 gap-y-8 lg:grid-cols-4">
-              {/*  Filters by Category and Price*/}
+              {/* Filters by Category and Price */}
               <div className="flex flex-col w-1/3">
                 {/* Category Filter */}
-                <div className="w-full ">
+                <div className="w-full">
                   <div className="category_box">
-                    <h3 className="text-xl border-b-2 border-red-800 font-mono  mb-3    font-bold   ">
-                      Category{" "}
+                    <h3 className="text-xl border-b-2 border-red-800 font-mono mb-3 font-bold">
+                      Category
                     </h3>
-                    <div className=" py-2  text-lg font-medium">
+                    <div className="py-2 text-lg font-medium">
                       <span
                         onClick={() => filterCategory()}
-                        className=" border pt-1 border-blue-900 px-1 pe-[72px] "
+                        className="border pt-1 border-blue-900 px-1 pe-[72px]"
                       >
-                        {" "}
-                        All{" "}
+                        All
                       </span>
                       {categories &&
                         categories.map((cat) => (
                           <span
                             className="flex flex-col border my-2 py-2 border-blue-900 px-1 hover:bg-blue-900 hover:text-white cursor-pointer"
                             key={cat._id}
-                            onClick={() => filterCategory(cat.name)}
+                            onClick={() => setSelectedCategory(cat.name)}
                           >
                             {cat.name}
                           </span>
@@ -223,7 +231,7 @@ const isProductInWishlist = (productId) => {
                 </div>
 
                 {/* Price Filter */}
-                <div className="w-full ">
+                 <div className="w-full ">
                   <div className="price_box">
                     <h3 className="text-xl border-b-2 border-red-800  font-mono     font-bold  my-2">
                       {" "}
@@ -242,9 +250,8 @@ const isProductInWishlist = (productId) => {
                 </div>
               </div>
 
-              {/* products grid page */}
-
-              <div className="w-full lg:col-span-3 ">
+              {/* Products Grid */}
+              <div className="w-full lg:col-span-3">
                 <div className="grid grid-cols-1 pb-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6">
                   {selectedProducts.map((product) => (
                     <div
@@ -253,14 +260,14 @@ const isProductInWishlist = (productId) => {
                       style={{ maxWidth: "370px" }}
                     >
                       <Link to={`/products/${product._id}`}>
-                        <div className="w-full p-2 bg-white h-72 overflow-hidden flex items-center justify-center ">
+                        <div className="w-full p-2 bg-white h-72 overflow-hidden flex items-center justify-center">
                           <img
                             src={product.image}
                             alt={product.name}
                             className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-300"
                           />
                         </div>
-                     
+
                         <div className="pt-4 pb-3 px-4 bg-gray-100 border-b">
                           <h4 className="uppercase font-semibold text-lg mb-1 text-gray-700 hover:text-primary transition">
                             {product.name}
@@ -269,22 +276,6 @@ const isProductInWishlist = (productId) => {
                             <p className="text-md text-primary font-semibold">
                               Rs. {product.price}
                             </p>
-
-                            {/* Product Colors */}
-                            {product.colors && (
-                              <div className="flex gap-2 mt-2">
-                                {product.colors
-                                  .split(",")
-                                  .map((color, index) => (
-                                    <span
-                                      key={index}
-                                      className="w-6 h-6 rounded-full"
-                                      style={{ backgroundColor: color.trim() }}
-                                    ></span>
-                                  ))}{" "}
-                                <p>{product.colors}</p>
-                              </div>
-                            )}
                           </div>
                         </div>
                       </Link>
@@ -296,17 +287,20 @@ const isProductInWishlist = (productId) => {
                         >
                           <FaCartArrowDown className="text-xl" />
                         </button>
-                        <button  onClick={() => addWishlist(product)} className="flex p-2 items-center justify-center w-8 h-8 text-white bg-red-700 rounded-full hover:bg-primary transition duration-300 focus:outline-none">
+                        <button
+                          onClick={() => addWishlist(product)}
+                          className="flex p-2 items-center justify-center w-8 h-8 text-white bg-red-700 rounded-full hover:bg-primary transition duration-300 focus:outline-none"
+                        >
                           <FaHeart className="text-xl" />
                         </button>
                       </div>
                     </div>
                   ))}
                 </div>
-                {/* pagination function */}
+                {/* Pagination */}
                 <ReactPaginate
                   previousLabel={
-                    <span className="prev py-1 px-3 rounded-md ">Previous</span>
+                    <span className="prev py-1 px-3 rounded-md">Previous</span>
                   }
                   nextLabel={
                     <span className="next py-1 px-3 rounded-md">Next</span>

@@ -12,7 +12,7 @@ const Header = () => {
 
   return (
     <>
-      <nav className="text-white  bg-red-600 py-4 body-font topheader overflow-x-hidden  sticky top-0 w-full  z-[99] shadow-xl  overflow-hidden ">
+      <nav style={{ backgroundColor: "rgb(46, 46, 46)" }}className="text-white  bg-red-600 py-4 body-font topheader overflow-x-hidden  sticky top-0 w-full  z-[99] shadow-xl  overflow-hidden ">
         <div className="container mx-auto flex flex-wrap justify-between items-center">
           {/* logo and hamburger menu */}
           <div className="flex items-center pt-2 md:hidden">
@@ -70,11 +70,11 @@ const Header = () => {
               Men
             </Link>
             <Link
-              to="/products/woman"
+              to="/products/women"
               activeClassName="active"
               className=" hover:text-gray-300 "
             >
-              Woman
+              Women
             </Link>
             <Link
               to="/products/kids"
@@ -120,7 +120,7 @@ const Header = () => {
             Men
           </Link>
           <Link
-             to="/products/woman"
+             to="/products/women"
             className="block text-red-600 px-4 py-2 border-b border-red-500"
             onClick={() => {
               dispatch(close());

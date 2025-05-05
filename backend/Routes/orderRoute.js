@@ -7,10 +7,10 @@ const orderController = require("../Controllers/orderController");
 router.route("/neworder").post(verifyToken, orderController.newOrder);
 router.route("/order/:id").get(verifyToken,verifyAdmin, orderController.getSingleOrder);
 router.route("/myorders").get(verifyToken, orderController.getLogedInUserOrder);
+router.route("/cancelorder/:id").delete(verifyToken, orderController.cancelOrder);
 router.route("/orders/admin").get(verifyToken,verifyAdmin,orderController.getAllOrdersAdmin);
 router.route("/orders/admin/:id").delete(verifyToken,verifyAdmin, orderController.deleteOrdersAdmin);
 router.route("/orders/admin/:id").put(verifyToken,verifyAdmin, orderController.updateOrdersAdmin);
-
 
 
 

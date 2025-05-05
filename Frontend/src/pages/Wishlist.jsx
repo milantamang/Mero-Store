@@ -28,7 +28,7 @@ const Wishlist = () => {
       <div className="bg-gray-100">
         <div className="container mx-auto py-10">
           <div className="pb-8  ">
-            <h1 className="font-bold text-3xl text-red-600 border-b-4 border-red-600 inline-block pb-2">
+            <h1 style={{ color: "rgb(147 57 57)" }} className="font-bold text-3xl text-[rgb(175, 53, 53)]]-600 border-b-4 border-red-600 inline-block pb-2">
               Your Favourite Wishlist
             </h1>
           </div>

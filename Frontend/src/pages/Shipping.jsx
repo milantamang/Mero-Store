@@ -30,11 +30,7 @@ const Shipping = () => {
   };
   return (
     <>
-     
-   
-
-
-      <div className="bg-gray-100 min-h-screen flex items-center py-20 justify-center px-4 sm:px-6 lg:px-8">
+     <div className="bg-gray-100 min-h-screen flex items-center py-20 justify-center px-4 sm:px-6 lg:px-8">
   <div className="max-w-lg w-full bg-white shadow-lg rounded-xl border border-blue-400 p-8">
     <h2 className="text-3xl font-semibold text-blue-700 text-center border-b-4 border-blue-400 pb-3">
       Shipping Details
