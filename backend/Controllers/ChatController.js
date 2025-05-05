@@ -1,4 +1,3 @@
-// backend/Controllers/ChatController.js
 const Product = require("../Models/ProductModel");
 const axios = require("axios");
 require('dotenv').config();

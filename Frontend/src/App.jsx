@@ -32,21 +32,20 @@ import EditProduct from "./pages/Dashboard/EditProduct";
 import Category from "./pages/Dashboard/Category";
 import AddOffer from "./pages/Dashboard/Offer";
 
-import {  useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import VerifyEmail from "./components/verifyEmail";
 import EditOrder from "./pages/Dashboard/EditOrder";
 import CustomerOrders from "./pages/CustomerOrders";
+import ChatBot from "./components/ChatBot";
 
 function App() {
-   const isLoggedIn = useSelector((state) => state.user.isLoggedIn);
+  const isLoggedIn = useSelector((state) => state.user.isLoggedIn);
   const user = useSelector((state) => state.user.user);
-  
+
   return (
     <>
-      
-      
       <Routes>
-          <Route path="/verifyemail/:userId/:token" element={<VerifyEmail />}/>
+        <Route path="/verifyemail/:userId/:token" element={<VerifyEmail />} />
         <Route element={<MainLayout />}>
           <Route path="/" element={<Home />} />
           <Route path="/products" element={<Products />} />
@@ -66,33 +65,35 @@ function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/forgetpassword" element={<ForgetPassword />} />
           <Route path="/resetpassword/:id/:token" element={<ResetPassword />} />
-          <Route path="/orders" element={<CustomerOrders />} /> 
+          <Route path="/orders" element={<CustomerOrders />} />
           <Route path="*" element={<PageNotFound />} />
-
         </Route>
         {/* Dashboard Routes (Authenticated and Admin Only) */}
         {isLoggedIn && user?.user_role === "admin" && (
-          
           <Route element={<DashboardLayout />}>
-            
-              <Route path="/dashboard" element={<DashboardHome />} />
-              <Route path="/dashboard/products" element={<Product />} />
-              <Route path="/dashboard/addproducts" element={<AddProducts />} />
-              <Route path="/dashboard/editproduct/:id" element={<EditProduct />} />
-              <Route path="/dashboard/users" element={<User />} />
-              <Route path="/dashboard/category" element={<Category />} />
-              <Route path="/dashboard/offer" element={<AddOffer />} />
+            <Route path="/dashboard" element={<DashboardHome />} />
+            <Route path="/dashboard/products" element={<Product />} />
+            <Route path="/dashboard/addproducts" element={<AddProducts />} />
+            <Route
+              path="/dashboard/editproduct/:id"
+              element={<EditProduct />}
+            />
+            <Route path="/dashboard/users" element={<User />} />
+            <Route path="/dashboard/category" element={<Category />} />
+            <Route path="/dashboard/offer" element={<AddOffer />} />
             <Route path="/dashboard/orders" element={<Orders />} />
-            <Route path="/dashboard/orders/edit/:orderId" element={<EditOrder />} />
-            </Route>
-          )}          
-          
+            <Route
+              path="/dashboard/orders/edit/:orderId"
+              element={<EditOrder />}
+            />
+          </Route>
+        )}
 
-       {/* Redirect to login if not authenticated */}
+        {/* Redirect to login if not authenticated */}
         {!isLoggedIn && <Route path="*" element={<Login />} />}
       </Routes>
-      
-          
+
+      <ChatBot />
     </>
   );
 }

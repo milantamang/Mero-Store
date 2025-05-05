@@ -1,161 +1,296 @@
-// Frontend/src/components/Chatbot.jsx
-import React, { useState, useRef, useEffect } from "react";
-import { FaRobot, FaTimes, FaPaperPlane, FaUser } from "react-icons/fa";
-import axios from "axios"; // Using axios instead of OpenAI SDK
-
-const Chatbot = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState([
-    {
-      role: "assistant",
-      content: "Hello! I'm your Mero-Store assistant. How can I help you today?",
-    },
-  ]);
-  const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef(null);
-
-  // Scroll to bottom of chat whenever messages update
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  const toggleChat = () => {
-    setIsOpen(!isOpen);
-  };
-
-  const handleInputChange = (e) => {
-    setInput(e.target.value);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (input.trim() === "") return;
-
-    // Add user message to chat
-    const userMessage = { role: "user", content: input };
-    setMessages((prevMessages) => [...prevMessages, userMessage]);
-    setInput("");
-    setIsLoading(true);
-
+import React, { useState, useEffect, useRef } from 'react';
+import { sendMessage } from './GeminiService';
+import SuggestedQuestions from './SuggestedQuestions';
+import ProductRecommendation from './ProductRecommendation';
+import config from './config';
+import { saveChatHistory, loadChatHistory, clearChatHistory, generateSessionId } from './chatHistoryUtil';
+import { getRecommendedProducts, searchProducts } from './productService';
+import { analyzeMessage, INTENTS, ENTITY_TYPES } from './nlpUtil';
+import './ChatBot.css';  // Function to analyze message and get product recommendations if relevant
+  const analyzeAndGetRecommendations = async (message) => {
     try {
-      // Call our backend API instead of OpenAI directly
-      const response = await axios.post(
-        "http://localhost:5000/api/v1/chat", // Your backend endpoint
-        {
-          messages: [
-            ...messages.map(msg => ({ role: msg.role, content: msg.content })),
-            { role: "user", content: input }
-          ]
+      // Analyze the message to determine intent and extract entities
+      const analysis = analyzeMessage(message);
+      
+      // If the intent is product search or category browse, try to get recommendations
+      if (
+        analysis.intent === INTENTS.PRODUCT_SEARCH || 
+        analysis.intent === INTENTS.CATEGORY_BROWSE
+      ) {
+        // Extract category if available
+        const category = analysis.entities[ENTITY_TYPES.CATEGORY];
+        
+        // Get recommended products based on message content
+        let products = [];
+        
+        // If the message contains specific search terms, use search
+        if (analysis.intent === INTENTS.PRODUCT_SEARCH) {
+          products = await searchProducts(message);
+        } else {
+          // Otherwise, get category-based recommendations
+          products = await getRecommendedProducts(category);
         }
-      );
-
-      // Add AI response to chat
-      if (response.data.choices && response.data.choices[0]) {
-        const aiMessage = {
-          role: "assistant",
-          content: response.data.choices[0].message.content,
-        };
-        setMessages((prevMessages) => [...prevMessages, aiMessage]);
+        
+        // Update recommendations state
+        if (products && products.length > 0) {
+          setRecommendedProducts(products);
+          setShowRecommendations(true);
+        } else {
+          setShowRecommendations(false);
+        }
+      } else {
+        // For other intents, don't show recommendations
+        setShowRecommendations(false);
       }
     } catch (error) {
-      console.error("Error calling chat API:", error);
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        {
-          role: "assistant",
-          content: "I'm sorry, I'm having trouble connecting right now. Please try again later.",
-        },
+      console.error('Error analyzing message or getting recommendations:', error);
+      setShowRecommendations(false);
+    }
+  };
+  
+  // Function to handle selecting a product from recommendations
+  const handleProductSelect = (product) => {
+    // Navigate to the product details page
+    window.location.href = `/products/${product._id || product.id}`;
+    
+    // Close the chat window
+    setIsOpen(false);
+  };
+  
+  // Function to handle clearing the chat history
+  const handleClearChat = () => {
+    // Show a confirmation dialog
+    if (window.confirm('Are you sure you want to clear the chat history?')) {
+      // Clear the chat history from localStorage
+      clearChatHistory(sessionId);
+      
+      // Reset the messages state to just the greeting
+      setMessages([{
+        role: 'assistant',
+        content: config.chatbot.defaultGreeting
+      }]);
+      
+      // Clear any product recommendations
+      setRecommendedProducts([]);
+      setShowRecommendations(false);
+    }
+  };import React, { useState, useEffect, useRef } from 'react';
+import { sendMessage } from './GeminiService';
+import SuggestedQuestions from './SuggestedQuestions';
+import config from './config';
+import { saveChatHistory, loadChatHistory, clearChatHistory, generateSessionId } from './chatHistoryUtil';
+import './ChatBot.css';
+
+const EnhancedChatBot = () => {
+  // Session ID for persisting chat across page loads
+  const [sessionId] = useState(() => {
+    // Try to get an existing session ID from localStorage, or generate a new one
+    const storedSessionId = localStorage.getItem('mero_store_chat_session_id');
+    if (storedSessionId) return storedSessionId;
+    
+    const newSessionId = generateSessionId();
+    localStorage.setItem('mero_store_chat_session_id', newSessionId);
+    return newSessionId;
+  });
+  
+  // State for managing the chat interface
+  const [isOpen, setIsOpen] = useState(false);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // State for chat history
+  const [messages, setMessages] = useState(() => {
+    // Try to load existing chat history
+    const savedHistory = loadChatHistory(sessionId);
+    
+    // If there's no saved history, start with the default greeting
+    if (!savedHistory || savedHistory.length === 0) {
+      return [{
+        role: 'assistant',
+        content: config.chatbot.defaultGreeting
+      }];
+    }
+    
+    return savedHistory;
+  });
+  
+  // State for product recommendations
+  const [recommendedProducts, setRecommendedProducts] = useState([]);
+  const [showRecommendations, setShowRecommendations] = useState(false);
+  
+  // Save chat history whenever messages change
+  useEffect(() => {
+    saveChatHistory(messages, sessionId);
+  }, [messages, sessionId]);
+  
+  // Ref for auto-scrolling to the latest message
+  const messagesEndRef = useRef(null);
+
+  // Function to handle sending messages
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    
+    // If there's no message to send, do nothing
+    const messageToSend = inputMessage.trim();
+    if (messageToSend === '') return;
+    
+    // Store the message before clearing the input
+    const currentMessage = messageToSend;
+    
+    // Add user message to chat
+    const userMessage = { role: 'user', content: currentMessage };
+    setMessages(prevMessages => [...prevMessages, userMessage]);
+    setInputMessage('');
+    setIsLoading(true);
+    
+    try {
+      // Analyze the message for intent and potential product recommendations
+      await analyzeAndGetRecommendations(currentMessage);
+      
+      // Get response from Gemini
+      const aiResponse = await sendMessage(currentMessage, messages);
+      
+      // Add AI response to chat
+      setMessages(prevMessages => [
+        ...prevMessages, 
+        { role: 'assistant', content: aiResponse }
       ]);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setMessages(prevMessages => [
+        ...prevMessages, 
+        { 
+          role: 'assistant', 
+          content: 'Sorry, I encountered an error. Please try again.' 
+        }
+      ]);
+      
+      // Clear recommendations on error
+      setShowRecommendations(false);
     } finally {
       setIsLoading(false);
     }
   };
 
-  return (
-    <div className="fixed bottom-5 right-5 z-50">
-      {/* Chat Toggle Button */}
-      <button
-        onClick={toggleChat}
-        className={`flex items-center justify-center w-14 h-14 rounded-full shadow-lg focus:outline-none transition-colors ${
-          isOpen ? "bg-red-600 text-white" : "bg-primary text-white"
-        }`}
-      >
-        {isOpen ? <FaTimes size={20} /> : <FaRobot size={20} />}
-      </button>
+  // Auto-scroll to the latest message
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
-      {/* Chat Window */}
+  return (
+    <div className="chatbot-container">
+      {/* Chat toggle button */}
+      <div 
+        className="chat-button" 
+        onClick={() => setIsOpen(!isOpen)}
+        aria-label="Toggle chat"
+      >
+        {isOpen ? (
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        ) : (
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+        )}
+      </div>
+
+      {/* Chat window */}
       {isOpen && (
-        <div className="absolute bottom-16 right-0 w-80 sm:w-96 h-96 bg-white rounded-lg shadow-2xl flex flex-col overflow-hidden border border-gray-200">
-          {/* Chat Header */}
-          <div className="bg-primary text-white p-4 flex items-center">
-            <FaRobot className="mr-2" size={20} />
-            <h3 className="font-semibold">Mero-Store Assistant</h3>
+        <div className="chat-window">
+          {/* Chat header */}
+          <div className="chat-header">
+            <h3>Mero-Store Assistant</h3>
+            <div className="header-actions">
+              {/* Clear chat button */}
+              <button 
+                className="clear-button" 
+                onClick={handleClearChat}
+                aria-label="Clear chat history"
+                title="Clear chat history"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+              
+              {/* Close button */}
+              <button 
+                className="close-button" 
+                onClick={() => setIsOpen(false)}
+                aria-label="Close chat"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
 
-          {/* Chat Messages */}
-          <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
+          {/* Messages container */}
+          <div className="messages-container">
             {messages.map((message, index) => (
-              <div
-                key={index}
-                className={`mb-4 flex ${
-                  message.role === "user" ? "justify-end" : "justify-start"
-                }`}
+              <div 
+                key={index} 
+                className={`message ${message.role === 'user' ? 'user-message' : 'bot-message'}`}
               >
-                <div
-                  className={`rounded-lg px-4 py-2 max-w-[80%] ${
-                    message.role === "user"
-                      ? "bg-primary text-white"
-                      : "bg-gray-200 text-gray-800"
-                  }`}
-                >
-                  <div className="flex items-center mb-1">
-                    {message.role === "user" ? (
-                      <>
-                        <span className="font-medium">You</span>
-                        <FaUser className="ml-1" size={12} />
-                      </>
-                    ) : (
-                      <>
-                        <FaRobot className="mr-1" size={12} />
-                        <span className="font-medium">Assistant</span>
-                      </>
-                    )}
-                  </div>
-                  <p className="text-sm">{message.content}</p>
-                </div>
+                {message.content}
               </div>
             ))}
+            
+            {/* Show suggested questions after the greeting message */}
+            {messages.length === 1 && messages[0].role === 'assistant' && (
+              <SuggestedQuestions 
+                onSelectQuestion={(question) => {
+                  // When a suggested question is clicked, handle it like a user message
+                  setInputMessage(question);
+                  handleSendMessage({ preventDefault: () => {} });
+                }}
+              />
+            )}
+            
+            {/* Show product recommendations when available */}
+            {showRecommendations && recommendedProducts.length > 0 && (
+              <ProductRecommendation 
+                products={recommendedProducts}
+                onProductSelect={handleProductSelect}
+              />
+            )}
+            
+            {/* Loading indicator */}
             {isLoading && (
-              <div className="flex justify-start mb-4">
-                <div className="bg-gray-200 text-gray-800 rounded-lg px-4 py-2">
-                  <div className="flex items-center space-x-1">
-                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{animationDelay: "0.2s"}}></div>
-                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{animationDelay: "0.4s"}}></div>
-                  </div>
+              <div className="typing-indicator">
+                <div className="typing-dots">
+                  <div className="typing-dot"></div>
+                  <div className="typing-dot"></div>
+                  <div className="typing-dot"></div>
                 </div>
               </div>
             )}
+            
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Chat Input */}
-          <form onSubmit={handleSubmit} className="border-t border-gray-200 p-4 flex">
+          {/* Message input form */}
+          <form onSubmit={handleSendMessage} className="message-form">
             <input
               type="text"
-              value={input}
-              onChange={handleInputChange}
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
               placeholder="Type your message..."
-              className="flex-1 border border-gray-300 rounded-l-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+              className="message-input"
               disabled={isLoading}
             />
             <button
               type="submit"
-              className="bg-primary text-white px-4 py-2 rounded-r-lg hover:bg-blue-700 focus:outline-none disabled:bg-gray-400"
-              disabled={isLoading || input.trim() === ""}
+              className="send-button"
+              disabled={isLoading || inputMessage.trim() === ''}
+              aria-label="Send message"
             >
-              <FaPaperPlane />
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
             </button>
           </form>
         </div>
@@ -164,4 +299,4 @@ const Chatbot = () => {
   );
 };
 
-export default Chatbot;
+export default ChatBot;
