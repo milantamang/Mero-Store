@@ -34,7 +34,6 @@ import AddOffer from "./pages/Dashboard/Offer";
 
 import { useSelector } from "react-redux";
 import VerifyEmail from "./components/verifyEmail";
-import EditOrder from "./pages/Dashboard/EditOrder";
 import CustomerOrders from "./pages/CustomerOrders";
 import ChatBot from "./components/Chatbot";
 
@@ -82,18 +81,12 @@ function App() {
             <Route path="/dashboard/category" element={<Category />} />
             <Route path="/dashboard/offer" element={<AddOffer />} />
             <Route path="/dashboard/orders" element={<Orders />} />
-            <Route
-              path="/dashboard/orders/edit/:orderId"
-              element={<EditOrder />}
-            />
           </Route>
         )}
 
         {/* Redirect to login if not authenticated */}
-        {!isLoggedIn && <Route path="*" element={<Login />} />}
+        {!isLoggedIn && <Route path="/dashboard/*" element={<Login />} />}
       </Routes>
-
-      <ChatBot />
     </>
   );
 }

@@ -179,7 +179,7 @@ const Order = () => {
                           value={order.orderStatus}
                           onChange={(e) => handleStatusChange(order._id, e.target.value)}
                         >
-                          <option value="Processing">Processing</option>
+                          <option value="Processing">Shipping</option>
                           <option value="Delivered">Delivered</option>
                           <option value="Cancelled">Cancelled</option>
                         </select>

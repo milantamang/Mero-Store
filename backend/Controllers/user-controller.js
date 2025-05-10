@@ -1,8 +1,10 @@
 const User = require("../Models/UserSchema");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const nodemailer = require("nodemailer");
 const asyncHandler = require("express-async-handler");
+const emailService = require("../utils/emailService");
+const otpUtil = require("../utils/otpUtil");
+const OTP = require("../Models/OtpModel");
 
 const JWT_SECRET = process.env.JWT_SECRETE;
 
@@ -11,6 +13,23 @@ const userRegister = async (req, res) => {
   try {
     const { username, email, password } = req.body;
     const oldUser = await User.findOne({ email });
+
+module.exports = {
+  userRegister,
+  userLogin,
+  logout,
+  deleteUser,
+  getAllUser,
+  forgetpassword,
+  resetPassword,
+  Profile,
+  emailVerificationRequest,
+  verifyEmail,
+  requestLoginOTP,
+  verifyLoginOTP,
+  requestVerificationOTP,
+  verifyEmailWithOTP
+};
     if (oldUser) {
       return res.status(400).json({ message: "User already exists" });
     }
@@ -20,7 +39,23 @@ const userRegister = async (req, res) => {
       email,
       password: hashPassword,
     });
-    if (result) return res.status(200).json(result);
+    
+    if (result) {
+      // Generate verification token
+      const verificationToken = jwt.sign(
+        { id: result._id.toString() },
+        JWT_SECRET,
+        { expiresIn: "24h" }
+      );
+      
+      // Send verification email
+      await emailService.sendRegistrationEmail(result, verificationToken);
+      
+      return res.status(200).json({
+        ...result._doc,
+        message: "Registration successful. Please check your email to verify your account."
+      });
+    }
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -30,7 +65,6 @@ const userRegister = async (req, res) => {
 const userLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
-    
 
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ message: "User not found" });
@@ -53,12 +87,74 @@ const userLogin = async (req, res) => {
       user_token: user_token,
       user_role: user.role,
       email_verified: user.emailVerified
-   
     });
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
 };
+
+// -------------------login with OTP process-------------
+const requestLoginOTP = asyncHandler(async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    // Generate and store OTP
+    const otp = await otpUtil.createOTP(user._id, email, "login");
+    
+    // Send OTP via email
+    await emailService.sendOtpEmail(user, otp);
+    
+    res.status(200).json({ 
+      message: "OTP sent to your email",
+      userId: user._id
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// -------------------verify login OTP-------------
+const verifyLoginOTP = asyncHandler(async (req, res) => {
+  try {
+    const { userId, otp } = req.body;
+    
+    // Verify OTP
+    const isValid = await otpUtil.verifyOTP(userId, otp, "login");
+    if (!isValid) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+    
+    // Get user details
+    const user = await User.findById(userId);
+    
+    // Generate token
+    const user_token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: "3d" }
+    );
+    
+    // Return user details and token
+    return res.status(200).json({
+      _id: user.id,
+      name: user.username,
+      email: user.email,
+      image: user.image,
+      cartItems: user.cartItems.map((item) => ({ pid: item.product })),
+      user_token: user_token,
+      user_role: user.role,
+      email_verified: user.emailVerified
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
 
 const Profile = async (req, res) => {
   try {
@@ -101,57 +197,26 @@ const Profile = async (req, res) => {
   }
 };
 
-
 // -------------------forgetpassword processs-------------
 const forgetpassword = asyncHandler(async (req, res) => {
   try {
     const { email } = req.body;
     const existingUser = await User.findOne({ email });
     if (!existingUser) {
-      return res.status(404).json({ error: "User not found in this email" });
+      return res.status(404).json({ error: "User not found with this email" });
     }
+    
+    // Generate reset token
     const resetToken = jwt.sign(
       { id: existingUser._id.toString() },
       JWT_SECRET,
-      {
-        expiresIn: "4h",
-      }
+      { expiresIn: "1h" }
     );
 
-    // Set up Node Mailer transport
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-    const resetUrl = `http://localhost:5173/resetpassword/${existingUser._id}/${resetToken}`;
-
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "Password Reset Request",
-      // text: ` http://localhost:5173/resetpassword/${existingUser._id}/${resetToken}`,
-      html: `
-        <h1>Password Reset Request</h1>
-        <p>Hello ${existingUser.username},</p>
-        <p>You have requested a password reset. Please click the following link to reset your password:</p>
-        <a href="${resetUrl}" style="color: blue; text-decoration: underline;">Reset Password</a>
-        <p>If you did not request this, please ignore this email.</p>
-      `,
-    };
-
-    transporter.sendMail(mailOptions, (error, info) => {
-      if (error) {
-        console.error(error);
-        return res.status(500).json({ error: "Email could not be sent" });
-      }
-      console.log("Email sent: " + info.response);
-      res
-        .status(200)
-        .json({ message: "Password reset link sent successfully" });
-    });
+    // Send password reset email
+    await emailService.sendPasswordResetEmail(existingUser, resetToken);
+    
+    res.status(200).json({ message: "Password reset link sent successfully" });
   } catch (error) {
     console.log(error);
     res.status(500).json({ error: "Internal Server Error" });
@@ -163,9 +228,6 @@ const resetPassword = asyncHandler(async (req, res) => {
   try {
     const { id, resetToken } = req.params;
     const { password } = req.body;
-
-    console.log("Received ID:", id);
-    console.log("Received Token:", resetToken);
 
     jwt.verify(resetToken, JWT_SECRET, async (err, decoded) => {
       if (err) {
@@ -202,6 +264,7 @@ const logout = async (req, res, next) => {
     message: "Logout successfully",
   });
 };
+
 // get all users
 const getAllUser = async (req, res) => {
   try {
@@ -228,6 +291,7 @@ const deleteUser = async (req, res) => {
   }
 };
 
+// Email verification request
 const emailVerificationRequest = async (req, res) => {
   try {
     const { email } = req.body;
@@ -239,50 +303,23 @@ const emailVerificationRequest = async (req, res) => {
     if (user.emailVerified) {
       return res.status(400).json({ message: "Email already verified" });
     }
+    
+    // Generate verification token
     const token = jwt.sign({ id: user._id }, JWT_SECRET, {
       expiresIn: "1d",
     });
-    const resetUrl = `http://localhost:5173/verifyemail/${user._id}/${token}`;
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: email,
-      subject: "Email Verification",
-      html: `
-          <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 8px; padding: 20px; background-color: #f9f9f9;">
-          <h1 style="color: #4CAF50; text-align: center;">Verify Your Email</h1>
-          <p style="font-size: 16px;">Hello <strong>${user.username}</strong>,</p>
-          <p style="font-size: 16px;">Thank you for signing up! Please verify your email address to activate your account.</p>
-          <div style="text-align: center; margin: 20px 0;">
-            <a href="${resetUrl}" style="display: inline-block; padding: 12px 20px; font-size: 16px; color: #fff; background-color: #4CAF50; text-decoration: none; border-radius: 5px;">Verify Email</a>
-          </div>
-          <p style="font-size: 14px; color: #555;">If you did not create this account, you can safely ignore this email.</p>
-          <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
-        </div>
-      `,
-    };
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    }); // Replace with your email and password
-    transporter.sendMail(mailOptions, (error, info) => {
-      if (error) {
-        console.error(error);
-        return res.status(500).json({ error: "Email could not be sent" });
-      }
-      console.log("Email sent: " + info.response);
-      res
-        .status(200)
-        .json({ message: "Email verification link sent successfully" });
-    });
+    
+    // Send verification email
+    await emailService.sendRegistrationEmail(user, token);
+    
+    res.status(200).json({ message: "Email verification link sent successfully" });
   } catch (error) {
     console.error("Error in email verification request:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
+// Verify email
 const verifyEmail = async (req, res) => {
   try {
     const { id, verificationToken } = req.params;
@@ -295,8 +332,17 @@ const verifyEmail = async (req, res) => {
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
+      
+      if (user.emailVerified) {
+        return res.status(200).json({ message: "Email already verified" });
+      }
+      
       user.emailVerified = true;
       await user.save();
+      
+      // Send welcome email after successful verification
+      await emailService.sendWelcomeEmail(user);
+      
       res.status(200).json({ message: "Email verified successfully" });
     });
   } catch (error) {
@@ -305,6 +351,62 @@ const verifyEmail = async (req, res) => {
   }
 };
 
+// Request OTP for email verification
+const requestVerificationOTP = asyncHandler(async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    if (user.emailVerified) {
+      return res.status(400).json({ message: "Email already verified" });
+    }
+    
+    // Generate and store OTP
+    const otp = await otpUtil.createOTP(user._id, email, "verification");
+    
+    // Send OTP via email
+    await emailService.sendOtpEmail(user, otp);
+    
+    res.status(200).json({ 
+      message: "OTP sent to your email",
+      userId: user._id
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Verify email with OTP
+const verifyEmailWithOTP = asyncHandler(async (req, res) => {
+  try {
+    const { userId, otp } = req.body;
+    
+    // Verify OTP
+    const isValid = await otpUtil.verifyOTP(userId, otp, "verification");
+    if (!isValid) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+    
+    // Update user verification status
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    user.emailVerified = true;
+    await user.save();
+    
+    // Send welcome email
+    await emailService.sendWelcomeEmail(user);
+    
+    res.status(200).json({ message: "Email verified successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
 module.exports = {
   userRegister,
   userLogin,
@@ -316,4 +418,45 @@ module.exports = {
   Profile,
   emailVerificationRequest,
   verifyEmail,
+  requestLoginOTP,
+  verifyLoginOTP,
+  requestVerificationOTP,
+  verifyEmailWithOTP
+};
+// This is just the section that needs to be fixed
+// Add this to your existing user-controller.js
+
+// Email verification route handler
+const verifyEmail = async (req, res) => {
+  try {
+    const { userId, token } = req.params;
+    
+    // Verify the token
+    jwt.verify(token, JWT_SECRET, async (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ error: "Invalid or expired token" });
+      }
+      
+      const user = await User.findById(decoded.id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Update user's email verification status
+      user.emailVerified = true;
+      await user.save();
+      
+      res.status(200).json({ message: "Email verified successfully" });
+    });
+  } catch (error) {
+    console.error("Error in email verification:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+// Add this to your module.exports
+module.exports = {
+  // ... existing exports
+  verifyEmail,
+  // Remember to include all your existing exports here
 };
