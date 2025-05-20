@@ -3,35 +3,57 @@ const Product = require("../Models/ProductModel");
 const User = require("../Models/UserSchema");
 
 // crete carT
+const ALL_SIZES = ["S", "M", "L", "XL", "XXL"];
+
 const addToCart = async (req, res) => {
   try {
     const { pid, name, price, quantity, category, image, size } = req.body;
-    // Find the user
+
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Check if the cart exists for the user
-    let cart = await Cart.findOne({ user: req.user.id });
-    if (!cart) {
-      // Create a new cart if it doesn't exist
-      cart = new Cart({
-        user: req.user.id,
-        cartItems: [],
-      });
+    // Fetch product by ID
+    const product = await Product.findById(pid);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
     }
 
-    // Check if the item with the same size already exists in the cart
+    // Use master size list to get index for stock
+    const sizeIndex = ALL_SIZES.indexOf(size);
+    if (sizeIndex === -1) {
+      return res.status(400).json({ message: "Invalid size selected" });
+    }
+
+    const availableStock = product.stock[sizeIndex];
+    
+    if (!availableStock || availableStock <= 0) {
+      return res.status(400).json({ message: `Size ${size} is out of stock` });
+    }
+
+    // Find or create cart
+    let cart = await Cart.findOne({ user: req.user.id });
+    if (!cart) {
+      cart = new Cart({ user: req.user.id, cartItems: [] });
+    }
+
+    // Check existing item in cart for this product & size
     const existingItem = cart.cartItems.find(
       (item) => item.product.toString() === pid && item.size === size
     );
 
+    // Calculate total quantity if adding
+    const newQuantity = existingItem ? existingItem.quantity + quantity : quantity;
+    if (newQuantity > availableStock) {
+      return res.status(400).json({
+        message: `Only ${availableStock} item(s) was available in stock for size ${size}`,
+      });
+    }
+
     if (existingItem) {
-      // Update the quantity if the item already exists
-      existingItem.quantity += quantity;
+      existingItem.quantity = newQuantity;
     } else {
-      // Add the new item to the cart
       cart.cartItems.push({
         product: pid,
         name,
@@ -43,14 +65,14 @@ const addToCart = async (req, res) => {
       });
     }
 
-    // Save the cart
     await cart.save();
-
     res.status(200).json(cart.cartItems);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
+
+
 
 //   get user cart
 const getUserCart = async (req, res) => {

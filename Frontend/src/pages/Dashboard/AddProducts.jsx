@@ -7,14 +7,14 @@ const AddProducts = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
-
+  const SIZE_OPTIONS = ["S", "M", "L", "XL", "XXL"];
   const [productData, setProductData] = useState({
     name: "",
     image: "",
     price: "",
     colors: "",
     category: "",
-    size: [],
+    stock: [0, 0, 0, 0, 0]
   });
 
   useEffect(() => {
@@ -42,6 +42,12 @@ const AddProducts = () => {
       ...productData,
       [name]: value,
     });
+  };
+
+  const handleStockChange = (index, value) => {
+    const newStock = [...productData.stock];
+    newStock[index] = parseInt(value) || 0;
+    setProductData({ ...productData, stock: newStock });
   };
 
   const handleImageUpload = async (e) => {
@@ -77,7 +83,13 @@ const AddProducts = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
+    const size = SIZE_OPTIONS.filter((_, i) => productData.stock[i] > 0);
+    const totalStock = productData.stock.reduce((sum, qty) => sum + qty, 0);
+    if (totalStock === 0) {
+      toast.error("Please enter stock for at least one size.");
+      setLoading(false);
+      return;
+    }
     try {
       const token = localStorage.getItem("token");
       const config = {
@@ -87,7 +99,7 @@ const AddProducts = () => {
       };
       const response = await axios.post(
         "http://localhost:5000/api/v1/products/new",
-        productData,
+        {...productData, size} ,
         config
       );
       toast.success("Product added successfully!");
@@ -97,7 +109,7 @@ const AddProducts = () => {
         price: "",
         colors: "",
         category: "",
-        size: [],
+        stock: [0, 0, 0, 0, 0],
       });
     } catch (error) {
       console.error("Error adding product:", error);
@@ -206,35 +218,24 @@ const AddProducts = () => {
                     </div>
                   </div>
 
-                  <div className="mb-4">
-                    <label className="form-label fw-semibold">Available Sizes</label>
-                    <div className="d-flex flex-wrap gap-3">
-                      {["S", "M", "L", "XL", "XXL"].map((size) => (
-                        <div key={size} className="form-check">
-                          <input
-                            type="checkbox"
-                            className="form-check-input border-primary"
-                            id={size}
-                            name="size"
-                            value={size}
-                            checked={productData.size.includes(size)}
-                            onChange={(e) => {
-                              const { value, checked } = e.target;
-                              setProductData((prevData) => ({
-                                ...prevData,
-                                size: checked
-                                  ? [...prevData.size, value]
-                                  : prevData.size.filter((s) => s !== value),
-                              }));
-                            }}
-                          />
-                          <label htmlFor={size} className="form-check-label ps-2">
-                            {size}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                    <div className="mb-4">
+                      <label className="form-label fw-semibold">Stock per Size</label>
+                      <div className="row">
+                        {SIZE_OPTIONS.map((size, index) => (
+                          <div className="col-md-2 mb-2" key={size}>
+                            <label className="form-label">{size}</label>
+                            <input
+                              type="number"
+                              min="0"
+                              className="form-control border-primary rounded-2 py-2"
+                              value={productData.stock[index]}
+                              onChange={(e) => handleStockChange(index, e.target.value)}
+                            />
+                          </div>
+                        ))}
+                      </div>
+</div>
+
 
                   <div className="mb-4">
                     <label htmlFor="colors" className="form-label fw-semibold">

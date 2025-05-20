@@ -5,7 +5,7 @@ import { saveShippingInfo } from "../redux/cart/cartSlice";
 
 const Shipping = () => {
   const { shippingInfo } = useSelector((state) => ({ ...state.cart }));
-  console.log("shipping info", shippingInfo);
+  
   const dispatch = useDispatch();
   const navigate = useNavigate();
 

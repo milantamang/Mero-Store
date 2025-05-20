@@ -18,6 +18,13 @@ const usersSchema = new mongoose.Schema({
     required: true,
   },
 
+  address: {
+    type: String,
+    default:""
+  },
+  phoneNumber: {
+    type: Number,
+  },
   cartItems: [
     {
       product: {

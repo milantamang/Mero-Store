@@ -14,22 +14,6 @@ const userRegister = async (req, res) => {
     const { username, email, password } = req.body;
     const oldUser = await User.findOne({ email });
 
-module.exports = {
-  userRegister,
-  userLogin,
-  logout,
-  deleteUser,
-  getAllUser,
-  forgetpassword,
-  resetPassword,
-  Profile,
-  emailVerificationRequest,
-  verifyEmail,
-  requestLoginOTP,
-  verifyLoginOTP,
-  requestVerificationOTP,
-  verifyEmailWithOTP
-};
     if (oldUser) {
       return res.status(400).json({ message: "User already exists" });
     }
@@ -39,7 +23,7 @@ module.exports = {
       email,
       password: hashPassword,
     });
-    
+
     if (result) {
       // Generate verification token
       const verificationToken = jwt.sign(
@@ -47,13 +31,14 @@ module.exports = {
         JWT_SECRET,
         { expiresIn: "24h" }
       );
-      
+
       // Send verification email
       await emailService.sendRegistrationEmail(result, verificationToken);
-      
+
       return res.status(200).json({
         ...result._doc,
-        message: "Registration successful. Please check your email to verify your account."
+        message:
+          "Registration successful. Please check your email to verify your account.",
       });
     }
   } catch (err) {
@@ -74,9 +59,13 @@ const userLogin = async (req, res) => {
     if (!isPasswordCorrect)
       return res.status(400).json({ message: "Invalid credentials" });
 
-    const user_token = jwt.sign({ id: user._id, email: user.email, role: user.role }, JWT_SECRET, {
-      expiresIn: "3d",
-    });
+    const user_token = jwt.sign(
+      { id: user._id, email: user.email, role: user.role },
+      JWT_SECRET,
+      {
+        expiresIn: "3d",
+      }
+    );
 
     return res.status(200).json({
       _id: user.id,
@@ -86,7 +75,9 @@ const userLogin = async (req, res) => {
       cartItems: user.cartItems.map((item) => ({ pid: item.product })),
       user_token: user_token,
       user_role: user.role,
-      email_verified: user.emailVerified
+      email_verified: user.emailVerified,
+      address: user.address,
+      phoneNumber: user.phoneNumber
     });
   } catch (err) {
     return res.status(500).json({ message: err.message });
@@ -97,22 +88,22 @@ const userLogin = async (req, res) => {
 const requestLoginOTP = asyncHandler(async (req, res) => {
   try {
     const { email } = req.body;
-    
+
     // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    
+
     // Generate and store OTP
     const otp = await otpUtil.createOTP(user._id, email, "login");
-    
+
     // Send OTP via email
     await emailService.sendOtpEmail(user, otp);
-    
-    res.status(200).json({ 
+
+    res.status(200).json({
       message: "OTP sent to your email",
-      userId: user._id
+      userId: user._id,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -122,24 +113,22 @@ const requestLoginOTP = asyncHandler(async (req, res) => {
 // -------------------verify login OTP-------------
 const verifyLoginOTP = asyncHandler(async (req, res) => {
   try {
-    const { userId, otp } = req.body;
-    
+   
+    const { userEmail, otp } = req.body;
     // Verify OTP
-    const isValid = await otpUtil.verifyOTP(userId, otp, "login");
+    const isValid = await otpUtil.verifyOTP(userEmail, otp, "login");
     if (!isValid) {
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
-    
     // Get user details
-    const user = await User.findById(userId);
-    
+    const user = await User.findOne({email: userEmail});
     // Generate token
     const user_token = jwt.sign(
       { id: user._id, email: user.email, role: user.role },
       JWT_SECRET,
       { expiresIn: "3d" }
     );
-    
+   
     // Return user details and token
     return res.status(200).json({
       _id: user.id,
@@ -149,7 +138,7 @@ const verifyLoginOTP = asyncHandler(async (req, res) => {
       cartItems: user.cartItems.map((item) => ({ pid: item.product })),
       user_token: user_token,
       user_role: user.role,
-      email_verified: user.emailVerified
+      email_verified: user.emailVerified,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -166,22 +155,21 @@ const Profile = async (req, res) => {
 
     // Verify the token
     const decoded = jwt.verify(token, JWT_SECRET);
-    console.log("Decoded token:", decoded);
+
 
     // Find the user by ID
     const user = await User.findById(decoded.id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-
     // Update the user's profile with the data from the request body
-    const { name, email } = req.body;
+    const { name, email,address,phoneNumber } = req.body;
     if (name) user.username = name; // Update username
     if (email) user.email = email; // Update email
-
+    if (address) user.address = address;
+    if(phoneNumber) user.phoneNumber = phoneNumber
     // Save the updated user to the database
     const updatedUser = await user.save();
-
     res.json({
       success: true,
       message: "Profile updated successfully",
@@ -205,7 +193,7 @@ const forgetpassword = asyncHandler(async (req, res) => {
     if (!existingUser) {
       return res.status(404).json({ error: "User not found with this email" });
     }
-    
+
     // Generate reset token
     const resetToken = jwt.sign(
       { id: existingUser._id.toString() },
@@ -215,7 +203,7 @@ const forgetpassword = asyncHandler(async (req, res) => {
 
     // Send password reset email
     await emailService.sendPasswordResetEmail(existingUser, resetToken);
-    
+
     res.status(200).json({ message: "Password reset link sent successfully" });
   } catch (error) {
     console.log(error);
@@ -252,6 +240,33 @@ const resetPassword = asyncHandler(async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const id = req.user.id;
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Current password is incorrect." });
+    }
+
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+    user.password = hashedPassword;
+    await user.save();
+
+    res.status(200).json({ message: "Password changed successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
 
 //--------------------logout user-------------
 const logout = async (req, res, next) => {
@@ -303,16 +318,18 @@ const emailVerificationRequest = async (req, res) => {
     if (user.emailVerified) {
       return res.status(400).json({ message: "Email already verified" });
     }
-    
+
     // Generate verification token
     const token = jwt.sign({ id: user._id }, JWT_SECRET, {
       expiresIn: "1d",
     });
-    
+
     // Send verification email
     await emailService.sendRegistrationEmail(user, token);
-    
-    res.status(200).json({ message: "Email verification link sent successfully" });
+
+    res
+      .status(200)
+      .json({ message: "Email verification link sent successfully" });
   } catch (error) {
     console.error("Error in email verification request:", error);
     res.status(500).json({ error: "Internal Server Error" });
@@ -322,27 +339,23 @@ const emailVerificationRequest = async (req, res) => {
 // Verify email
 const verifyEmail = async (req, res) => {
   try {
-    const { id, verificationToken } = req.params;
-    
-    jwt.verify(verificationToken, JWT_SECRET, async (err, decoded) => {
+    const { userId, token } = req.params;
+
+    // Verify the token
+    jwt.verify(token, JWT_SECRET, async (err, decoded) => {
       if (err) {
         return res.status(401).json({ error: "Invalid or expired token" });
       }
+
       const user = await User.findById(decoded.id);
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
-      
-      if (user.emailVerified) {
-        return res.status(200).json({ message: "Email already verified" });
-      }
-      
+
+      // Update user's email verification status
       user.emailVerified = true;
       await user.save();
-      
-      // Send welcome email after successful verification
-      await emailService.sendWelcomeEmail(user);
-      
+
       res.status(200).json({ message: "Email verified successfully" });
     });
   } catch (error) {
@@ -354,8 +367,8 @@ const verifyEmail = async (req, res) => {
 // Request OTP for email verification
 const requestVerificationOTP = asyncHandler(async (req, res) => {
   try {
-    const { email } = req.body;
-    
+    const { email, purpose = "verification" } = req.body;
+  
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -363,16 +376,15 @@ const requestVerificationOTP = asyncHandler(async (req, res) => {
     if (user.emailVerified) {
       return res.status(400).json({ message: "Email already verified" });
     }
-    
     // Generate and store OTP
-    const otp = await otpUtil.createOTP(user._id, email, "verification");
-    
+    const otp = await otpUtil.createOTP(user._id, email, purpose);
+
     // Send OTP via email
     await emailService.sendOtpEmail(user, otp);
-    
-    res.status(200).json({ 
+
+    res.status(200).json({
       message: "OTP sent to your email",
-      userId: user._id
+      userId: user._id,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -382,27 +394,29 @@ const requestVerificationOTP = asyncHandler(async (req, res) => {
 // Verify email with OTP
 const verifyEmailWithOTP = asyncHandler(async (req, res) => {
   try {
-    const { userId, otp } = req.body;
-    
+    const { userEmail, otp } = req.body;
+   
     // Verify OTP
-    const isValid = await otpUtil.verifyOTP(userId, otp, "verification");
+    const isValid = await otpUtil.verifyOTP(userEmail, otp, "verification");
     if (!isValid) {
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
-    
+
     // Update user verification status
-    const user = await User.findById(userId);
+    const user = await User.findOne({email: userEmail});
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    
+
     user.emailVerified = true;
     await user.save();
-    
+
     // Send welcome email
     await emailService.sendWelcomeEmail(user);
-    
-    res.status(200).json({ message: "Email verified successfully" });
+
+    return res.status(200).json({
+      email: user.email,message:"Email verified successfully"
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -421,42 +435,6 @@ module.exports = {
   requestLoginOTP,
   verifyLoginOTP,
   requestVerificationOTP,
-  verifyEmailWithOTP
-};
-// This is just the section that needs to be fixed
-// Add this to your existing user-controller.js
-
-// Email verification route handler
-const verifyEmail = async (req, res) => {
-  try {
-    const { userId, token } = req.params;
-    
-    // Verify the token
-    jwt.verify(token, JWT_SECRET, async (err, decoded) => {
-      if (err) {
-        return res.status(401).json({ error: "Invalid or expired token" });
-      }
-      
-      const user = await User.findById(decoded.id);
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-      
-      // Update user's email verification status
-      user.emailVerified = true;
-      await user.save();
-      
-      res.status(200).json({ message: "Email verified successfully" });
-    });
-  } catch (error) {
-    console.error("Error in email verification:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-};
-
-// Add this to your module.exports
-module.exports = {
-  // ... existing exports
-  verifyEmail,
-  // Remember to include all your existing exports here
+  verifyEmailWithOTP,
+  changePassword
 };

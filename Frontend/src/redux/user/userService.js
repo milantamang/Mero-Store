@@ -3,6 +3,7 @@ const BACKEND_URL_REGISTER = "http://localhost:5000/api/v1/register";
 const BACKEND_URL_LOGIN = "http://localhost:5000/api/v1/login";
 const BACKEND_URL_LOGOUT = "http://localhost:5000/api/v1/logout";
 const BACKEND_URL_PROFILE = "http://localhost:5000/api/v1/profile";
+const BACKEND_URL_CHANGE_PASSWORD = "http://localhost:5000/api/v1/change-password";
 const BACKEND_URL_VERIFICATION_REQUEST = "http://localhost:5000/api/v1/sendverificationemail";
 const BACKEND_URL_VERIFY_EMAIL = "http://localhost:5000/api/v1/verifyemail";
 
@@ -26,6 +27,18 @@ const updateProfile = async (profileData) => {
   };
 
   const response = await axios.put(BACKEND_URL_PROFILE, profileData, config);
+  return response.data;
+};
+
+const changePassword = async (currentPassword, newPassword) => {
+  const token = localStorage.getItem("token");
+  const config = {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+
+  const response = await axios.put(BACKEND_URL_CHANGE_PASSWORD, {currentPassword,newPassword}, config);
   return response.data;
 };
 
@@ -61,5 +74,5 @@ const verifyEmail = async (userId, token) => {
   return response.data;
 };
 
-const authService = { register, login, logout, updateProfile, sendVerificationRequest,verifyEmail };
+const authService = { register, login, logout, updateProfile, sendVerificationRequest,verifyEmail,changePassword };
 export default authService;

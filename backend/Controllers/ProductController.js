@@ -3,7 +3,7 @@ const Product = require("../Models/ProductModel");
 // create products
 const addProduct = async (req, res) => {
   try {
-    const { name, price, category, image, colors, size } = req.body;
+    const { name, price, category, image, colors, size,stock } = req.body;
     const isExists = await Product.findOne({ name });
     if (isExists)
       return res.status(400).json({ message: "Product already exists" });
@@ -15,6 +15,7 @@ const addProduct = async (req, res) => {
       image,
       colors,
       size,
+      stock,
     });
     return res
       .status(201)
@@ -26,6 +27,51 @@ const addProduct = async (req, res) => {
 
 // get all Products
 const getProducts = async (req, res) => {
+  try {
+    let query = {};
+
+    if (req.query.search) {
+      query = {
+        name: { $regex: new RegExp(req.query.search, "i") },
+        stock: { $elemMatch: { $gt: 0 } }
+      };
+    } else {
+      query = { stock: { $elemMatch: { $gt: 0 } } };
+    }
+
+    const products = await Product.find(query);
+    res.status(200).json({ success: true, totalProduct: products.length, products });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+// get single products
+const getProductById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const product = await Product.findById(id);
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    // Check if all stock values are 0 or falsy
+    const isOutOfStock = product.stock.every((qty) => qty <= 0);
+
+    if (isOutOfStock) {
+      return res.status(200).json({ message: "Out of stock" });
+    }
+
+    res.status(200).json(product);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const getProductsAdmin = async (req, res) => {
   try {
     let query = {};
     // Check if there is a 'search' query parameter in the request
@@ -43,7 +89,7 @@ const getProducts = async (req, res) => {
 };
 
 // get single products
-const getProductById = async (req, res) => {
+const getProductByIdAdmin = async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -57,7 +103,6 @@ const getProductById = async (req, res) => {
 // @route http://localhost:5000/api/products/search?searchQuery=apple
 const getProductsBySearch = async (req, res) => {
   const { searchQuery } = req.query;
-  console.log(searchQuery);
 
   try {
     const name = new RegExp(searchQuery, "i");
@@ -83,7 +128,7 @@ const deleteProduct = async (req, res) => {
 const editProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, price, category, image, colors, size } = req.body;
+    const { name, price, category, image, colors, size,stock } = req.body;
     // Find the product by ID
     let product = await Product.findById(id);
     if (!product) {
@@ -95,14 +140,9 @@ const editProduct = async (req, res) => {
     product.category = category;
     product.image = image;
     product.colors = colors;
- 
-  // Ensure size is an array before updating
-  if (Array.isArray(size)) {
+    product.stock = stock
     product.size = size;
-  } else {
-    // If size is a single value, convert it into an array
-    product.size = [size];
-  }
+
     // Save the updated product
     await product.save();
     return res
@@ -120,4 +160,6 @@ module.exports = {
   deleteProduct,
   editProduct,
   getProductById,
+  getProductsAdmin,
+  getProductByIdAdmin
 };

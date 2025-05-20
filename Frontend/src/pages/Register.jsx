@@ -39,7 +39,6 @@ const Register = () => {
     await dispatch(register(userData));
     setFormData(initialState);
 
-    console.log(formData);
   };
   useEffect(() => {
     if (isSuccess && isLoggedIn) {

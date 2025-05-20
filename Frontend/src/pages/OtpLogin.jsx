@@ -6,7 +6,7 @@ import OtpVerification from "../components/OtpVerification";
 
 /**
  * OTP Login Page
- * Allows users to login with OTP sent to their email
+ * Allows users to login with OTP sent to their email (passwordless login)
  */
 const OtpLogin = () => {
   const [email, setEmail] = useState("");
@@ -107,10 +107,9 @@ const OtpLogin = () => {
         ) : (
           <div className="mt-8">
             <OtpVerification 
-              userId={userId} 
+              userEmail={email} 
               purpose="login" 
               onSuccess={handleOtpSuccess}
-              resendEndpoint="http://localhost:5000/api/v1/request-login-otp"
             />
           </div>
         )}

@@ -29,7 +29,6 @@ export default function Products() {
 
   let priceArr = products.map((item) => item.price);
   let maxPrice = Math.max(...priceArr);
-
   useEffect(() => {
     if (maxPrice) {
       setPrice(maxPrice);
@@ -113,6 +112,7 @@ export default function Products() {
   
   // Add to cart handler
   const addToCartHandler = (product) => {
+    console.log(product)
     if (isLoggedIn) {
      /*  if (user.email_verified === false) {
         toast.error("Please verify your account to add to cart");

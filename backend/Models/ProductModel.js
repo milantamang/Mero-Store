@@ -28,6 +28,11 @@ const productSchema = mongoose.Schema({
 
   inStock: { type: Boolean, default: true },
 
+  stock: {
+    type: [Number],
+    required: true,
+    default:[0,0,0,0,0]
+  },
   image: String,
 
   createdAt: {

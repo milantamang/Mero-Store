@@ -40,7 +40,6 @@ const orderSchema = mongoose.Schema({
       },
       image: {
         type: String,
-        required: true,
       },
       size: {
         type: [String],

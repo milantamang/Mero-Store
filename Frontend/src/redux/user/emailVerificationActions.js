@@ -96,11 +96,3 @@ export const verifyLoginOTP = createAsyncThunk(
     }
   }
 );
-
-// Export all actions
-export const emailVerificationActions = {
-  requestVerificationOTP,
-  verifyEmailWithOTP,
-  requestLoginOTP,
-  verifyLoginOTP
-};

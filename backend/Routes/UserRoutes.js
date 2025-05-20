@@ -8,7 +8,7 @@ router.route("/register").post(usercontroller.userRegister);
 router.route("/login").post(usercontroller.userLogin);
 router.route("/logout").get(usercontroller.logout);
 router.route("/profile").put(verifyToken, usercontroller.Profile);
-
+router.route("/change-password").put(verifyToken, usercontroller.changePassword);
 // OTP-based login routes
 router.route("/request-login-otp").post(usercontroller.requestLoginOTP);
 router.route("/verify-login-otp").post(usercontroller.verifyLoginOTP);

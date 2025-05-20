@@ -1,11 +1,10 @@
-// Frontend/src/components/MainLayout.jsx
+
 import React from "react";
 import { Outlet } from "react-router-dom";
 import Header from "./Header";
 import Footer from "./Footer";
 import Topbar from "./Topbar";
 import { useSelector } from "react-redux";
-import VerificationRequired from "./VerificationRequired";
 import Chatbot from "./Chatbot"; 
 
 const MainLayout = () => {
@@ -14,16 +13,14 @@ const MainLayout = () => {
  
     return (
         <>
-            {isLoggedIn && user?.email_verified === false && (
-                <VerificationRequired/>
-            )}
+            {/* Removed the verification banner here */}
             <Topbar />
             <Header />
             <main>
                 <Outlet />
             </main>
             <Footer />
-            <Chatbot /> {/* Add the Chatbot component here */}
+            <Chatbot />
         </>
     );
 };

@@ -16,7 +16,6 @@ API.interceptors.request.use((req) => {
 
 export const addToCart = async (cartItem) => {
   const response = await API.post("/addtocart", cartItem);
-  console.log(response.data);
   return response.data; 
 };
 export const getUserCart = async () => {

@@ -44,7 +44,7 @@ const ConfirmOrder = () => {
           price: item.price,
           quantity: item.quantity,
           image: item.image,
-          product: item._id,
+          product: item.product,
           size: item.size,
         })),
         shippingInfo: shippingInfo,
@@ -53,7 +53,6 @@ const ConfirmOrder = () => {
         shippingPrice: shipping_charge,
         totalPrice: grand_total,
       };
-      console.log(orderData);
       dispatch(createNewOrder(orderData));
       dispatch(deleteCart());
       toast.success("Order placed successfully");
@@ -87,7 +86,6 @@ const ConfirmOrder = () => {
       payload
     );
 
-    console.log(res.data.payment_url);
 
     if (res.data) {
       

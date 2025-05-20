@@ -73,7 +73,6 @@ const productSlice = createSlice({
       })
       .addCase(getProductById.rejected, (state, action) => {
         state.loading = false;
-        console.log(action.payload);
         state.error = action.payload.message;
       })
 
@@ -83,12 +82,10 @@ const productSlice = createSlice({
       })
       .addCase(searchProduct.fulfilled, (state, action) => {
         state.loading = false;
-        console.log(action);
         state.products = action.payload;
       })
       .addCase(searchProduct.rejected, (state, action) => {
         state.loading = false;
-        console.log(action.payload);
         state.error = action.payload.message;
       });
   },

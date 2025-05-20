@@ -1,17 +1,13 @@
+// Frontend/src/components/RegistrationOTP.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
 
-/**
- * OTP Verification Component
- * Used for verifying email with OTP
- */
-const OtpVerification = ({ userId, purpose, onSuccess, resendEndpoint }) => {
+const RegistrationOTP = ({ userEmail,onSuccess,purpose }) => {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(0);
-  const [canResend, setCanResend] = useState(true);
+  const [timeLeft, setTimeLeft] = useState(60);
   const navigate = useNavigate();
 
   // Set up countdown timer for OTP resend
@@ -21,8 +17,6 @@ const OtpVerification = ({ userId, purpose, onSuccess, resendEndpoint }) => {
         setTimeLeft(timeLeft - 1);
       }, 1000);
       return () => clearTimeout(timerId);
-    } else if (timeLeft === 0) {
-      setCanResend(true);
     }
   }, [timeLeft]);
 
@@ -72,7 +66,7 @@ const OtpVerification = ({ userId, purpose, onSuccess, resendEndpoint }) => {
     }
   };
 
-  // Handle OTP verification submission
+  // Handle OTP verification
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -85,39 +79,24 @@ const OtpVerification = ({ userId, purpose, onSuccess, resendEndpoint }) => {
     }
 
     try {
-      let endpoint = "";
-      let data = { userId, otp: otpValue };
-
-      // Determine which endpoint to use based on purpose
-      if (purpose === "verification") {
-        endpoint = "http://localhost:5000/api/v1/verify-email-otp";
-      } else if (purpose === "login") {
-        endpoint = "http://localhost:5000/api/v1/verify-login-otp";
-      } else if (purpose === "password-reset") {
-        endpoint = "http://localhost:5000/api/v1/verify-password-reset-otp";
+      
+      if (purpose == "login") { 
+      const response = await axios.post(
+        "http://localhost:5000/api/v1/verify-login-otp",
+        { userEmail, otp: otpValue }
+      );
+   
+      toast.success("Email verified successfully!");
+        onSuccess(response.data);
       }
-
-      const response = await axios.post(endpoint, data);
-
-      if (response.data) {
-        toast.success(response.data.message || "Verification successful");
-        
-        // Call the onSuccess callback if provided
-        if (onSuccess && typeof onSuccess === 'function') {
+      else if (purpose = "verification") {
+        const response = await axios.post(
+          "http://localhost:5000/api/v1/verify-email-otp",
+          { userEmail, otp: otpValue }
+        );
+     
+        toast.success("Email verified successfully!");
           onSuccess(response.data);
-        } else {
-          // Default navigation based on purpose
-          if (purpose === "verification" || purpose === "password-reset") {
-            navigate("/login");
-          } else if (purpose === "login") {
-            // Store user data in localStorage and navigate to home
-            if (response.data.user_token) {
-              localStorage.setItem("token", response.data.user_token);
-              localStorage.setItem("user", JSON.stringify(response.data));
-              navigate("/");
-            }
-          }
-        }
       }
     } catch (error) {
       console.error("Error verifying OTP:", error);
@@ -129,27 +108,27 @@ const OtpVerification = ({ userId, purpose, onSuccess, resendEndpoint }) => {
 
   // Handle OTP resend
   const handleResend = async () => {
-    if (!canResend) return;
+    if (timeLeft > 0) return;
     
-    setCanResend(false);
-    setTimeLeft(60); // Set 60 seconds cooldown
+    setTimeLeft(60); // Reset countdown
 
     try {
-      const response = await axios.post(resendEndpoint, { userId });
+      await axios.post("http://localhost:5000/api/v1/request-verification-otp", { 
+        email: userEmail,
+        purpose:purpose
+      });
       toast.success("OTP has been resent to your email");
     } catch (error) {
       console.error("Error resending OTP:", error);
       toast.error("Failed to resend OTP");
-      setCanResend(true);
-      setTimeLeft(0);
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center p-6 bg-white rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Enter Verification Code</h2>
-      <p className="text-gray-600 mb-8 text-center">
-        We've sent a 6-digit code to your email address. Please enter it below to verify.
+    <div className="flex flex-col items-center p-6 bg-white rounded-lg">
+      <h2 className="text-2xl font-bold text-gray-800 mb-3">Verify Your Email</h2>
+      <p className="text-gray-600 mb-6 text-center">
+        We've sent a 6-digit code to {userEmail}. Please enter it below to complete your registration.
       </p>
 
       <form onSubmit={handleSubmit} className="w-full">
@@ -173,28 +152,26 @@ const OtpVerification = ({ userId, purpose, onSuccess, resendEndpoint }) => {
         <button
           type="submit"
           disabled={isSubmitting}
-          className={`w-full py-3 rounded-md font-medium text-white ${
-            isSubmitting ? "bg-gray-400" : "bg-primary hover:bg-sec"
-          }`}
+          className="w-full py-3 rounded-md font-medium text-white bg-primary hover:bg-sec"
         >
-          {isSubmitting ? "Verifying..." : "Verify OTP"}
+          {isSubmitting ? "Verifying..." : "Verify Email"}
         </button>
       </form>
 
-      <div className="mt-6">
+      <div className="mt-4">
         <p className="text-gray-600 text-center">
           Didn't receive the code?{" "}
-          {canResend ? (
+          {timeLeft > 0 ? (
+            <span className="text-gray-500">
+              Resend in {timeLeft} seconds
+            </span>
+          ) : (
             <button
               onClick={handleResend}
               className="text-primary font-medium hover:underline"
             >
               Resend Code
             </button>
-          ) : (
-            <span className="text-gray-500">
-              Resend in {timeLeft} seconds
-            </span>
           )}
         </p>
       </div>
@@ -202,4 +179,4 @@ const OtpVerification = ({ userId, purpose, onSuccess, resendEndpoint }) => {
   );
 };
 
-export default OtpVerification;
+export default RegistrationOTP;

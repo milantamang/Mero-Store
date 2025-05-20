@@ -3,9 +3,10 @@ const asyncHandler = require("express-async-handler");
 const Product = require("../Models/ProductModel");
 const User = require("../Models/UserSchema");
 const emailService = require("../utils/emailService");
-
+const { ImTerminal } = require("react-icons/im");
+const ALL_SIZES = ["S", "M", "L", "XL", "XXL"];
 // create new Order
-const newOrder = asyncHandler(async (req, res, next) => {
+const newOrder = asyncHandler(async (req, res) => {
   try {
     const {
       shippingInfo,
@@ -17,6 +18,7 @@ const newOrder = asyncHandler(async (req, res, next) => {
       totalPrice,
     } = req.body;
 
+    // Create the order
     const order = await Order.create({
       shippingInfo,
       orderItems,
@@ -28,29 +30,53 @@ const newOrder = asyncHandler(async (req, res, next) => {
       paidAt: Date.now(),
       user: req.user.id,
     });
-    
-    // Find user to get email for sending confirmation
+
+    // Deduct stock from each ordered product
+    for (const item of orderItems) {
+      const product = await Product.findById(item.product);
+      if (!product) continue;
+      const sizeIndex = ALL_SIZES.indexOf(item.size);
+      if (sizeIndex === -1) continue;
+      // Initialize stock if missing
+      if (!product.stock || product.stock.length < ALL_SIZES.length) {
+        product.stock = Array(ALL_SIZES.length).fill(0);
+      }
+      // Reduce stock safely
+      product.stock[sizeIndex] = Math.max(0, product.stock[sizeIndex] - item.quantity);
+
+      if (product.stock[sizeIndex] === 0) {
+        product.size = product.size.filter((s) => s !== item.size);
+      } else {
+        // Ensure size is in the list if there's stock (in case it's missing)
+        if (!product.size.includes(item.size)) {
+          product.size.push(item.size);
+        }
+      }
+      await product.save();
+    }
+
+    // Send confirmation email
     const user = await User.findById(req.user.id);
-    
-    // Send order confirmation email
     if (user && user.email) {
       await emailService.sendOrderConfirmationEmail(user, order);
     }
-    
+
     res.status(200).json({
       success: true,
       order,
       user: req.user.id,
     });
+
   } catch (error) {
     console.error("Error creating order:", error);
     res.status(500).json({
       success: false,
       message: "Failed to create order",
-      error: error.message
+      error: error.message,
     });
   }
 });
+
 
 const getSingleOrder = asyncHandler(async (req, res, next) => {
   const order = await Order.findById(req.params.id).populate(
@@ -185,7 +211,6 @@ const sendOrderStatusUpdateEmail = async (user, order) => {
 };
 
 async function updateStock(id, quantity) {
-  console.log(id, quantity);
   const product = await Product.findById(id);
   product.Stock = product.Stock-quantity;
   await product.save({ validateBeforeSave: false });

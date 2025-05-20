@@ -5,6 +5,8 @@ const { verifyAdmin } = require("../middleware/verifyToken");
 
 router.route("/products").get(productcontroller.getProducts);
 router.route("/products/:id").get(productcontroller.getProductById);
+router.route("/admin/products").get(productcontroller.getProductsAdmin);
+router.route("/admin/products/:id").get(productcontroller.getProductByIdAdmin);
 router.route("/product/search").get(productcontroller.getProductsBySearch);
 router.route("/deleteproduct/:id").delete(productcontroller.deleteProduct);
 

@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import axios from "axios";
 import OtpVerification from "../components/OtpVerification";
+import { setEmailVerified  } from "../redux/user/userSlice";
 
 /**
  * OTP Email Verification Page
@@ -16,7 +17,8 @@ const OtpEmailVerification = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [otpRequested, setOtpRequested] = useState(false);
   const navigate = useNavigate();
-  
+  const dispatch = useDispatch();
+
   // If user is already logged in, use their info
   useEffect(() => {
     if (isLoggedIn && user) {
@@ -28,7 +30,6 @@ const OtpEmailVerification = () => {
   // Handle OTP request
   const handleRequestOTP = async (e) => {
     e?.preventDefault();
-    
     if (!email) {
       toast.error("Please enter your email address");
       return;
@@ -56,17 +57,9 @@ const OtpEmailVerification = () => {
   // Handle successful OTP verification
   const handleVerificationSuccess = (data) => {
     toast.success("Email verified successfully!");
-    
-    // If user is logged in, update their state
-    if (isLoggedIn && user) {
-      // Update user state (would typically be done through Redux)
-      // ...
-      
-      // Redirect to home or profile
-      navigate("/profile");
-    } else {
-      // Redirect to login
-      navigate("/login");
+    dispatch(setEmailVerified());
+    if (data) {
+      navigate('/')
     }
   };
 
@@ -121,10 +114,9 @@ const OtpEmailVerification = () => {
         ) : (
           <div className="mt-8">
             <OtpVerification 
-              userId={userId} 
+              userEmail={email} 
               purpose="verification" 
               onSuccess={handleVerificationSuccess}
-              resendEndpoint="http://localhost:5000/api/v1/request-verification-otp"
             />
           </div>
         )}
