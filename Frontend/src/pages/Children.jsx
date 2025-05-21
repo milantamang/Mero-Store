@@ -6,9 +6,11 @@ import { FaHeart } from "react-icons/fa6";
 import { getProducts } from "../redux/product/productSlice";
 import { toast } from "react-toastify";
 import { addToCart } from "../redux/cart/cartSlice";
+import { addToWishlist, userWishlist } from "../redux/wishlist/wishlistSlice";
 
 export default function Children({ category: propCategory }) {
-  const { products, error } = useSelector((state) => ({ ...state.products }));
+  const { products, error } = useSelector((state) => state.products);
+  const { wishitems } = useSelector((state) => state.wishlist);
   const { category: routeCategory } = useParams(); // Renamed to avoid conflict
   const { isLoggedIn } = useSelector((state) => state.user);
   const [list, setList] = useState([]);
@@ -18,7 +20,11 @@ export default function Children({ category: propCategory }) {
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
-
+  useEffect(() => {
+    if (isLoggedIn) {
+      dispatch(userWishlist());
+    }
+  }, [dispatch, isLoggedIn]);
   useEffect(() => {
     dispatch(getProducts()); // Fetch all products
   }, [dispatch]);
@@ -37,7 +43,7 @@ export default function Children({ category: propCategory }) {
       );
       setList(filteredProducts);
     } else {
-      setList(products || []); 
+      setList(products || []);
     }
   }, [filteredCategory, products]);
 
@@ -48,40 +54,40 @@ export default function Children({ category: propCategory }) {
   }, [error]);
 
   const addToCartHandler = (product) => {
-        if (isLoggedIn) {
-          // Get the first size from the product.size array
-          const firstSize = product.size && product.size.length > 0 ? product.size[0] : null;
-    
-          if (!firstSize) {
-            toast.error("No size available for this product");
-            return;
-          }
-    
-          const cartItem = {
-            pid: product._id,
-            name: product.name,
-            price: product.price,
-            quantity: 1, 
-            category: product.category,
-            image: product.image,
-            size: firstSize,
-          };
-    
-          // Dispatch the addToCartAsync action
-          dispatch(addToCart(cartItem));
-        } else {
-          toast.error("Please log in to add to cart");
-          navigate("/login");
-        }
+    if (isLoggedIn) {
+      // Get the first size from the product.size array
+      const firstSize =
+        product.size && product.size.length > 0 ? product.size[0] : null;
+
+      if (!firstSize) {
+        toast.error("No size available for this product");
+        return;
+      }
+
+      const cartItem = {
+        pid: product._id,
+        name: product.name,
+        price: product.price,
+        quantity: 1,
+        category: product.category,
+        image: product.image,
+        size: firstSize,
       };
+
+      // Dispatch the addToCartAsync action
+      dispatch(addToCart(cartItem));
+    } else {
+      toast.error("Please log in to add to cart");
+      navigate("/login");
+    }
+  };
 
   return (
     <div className="bg-gray-50 overflow-x-hidden py-10">
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-     
         <h1 className="text-3xl mb-4 font-bold tracking-tight text-red-600 pt-6  text-center border-b-2 inline-table  border-red-600 uppercase">
-  {filteredCategory ? `${filteredCategory} products` : "Our Products"}
-</h1>
+          {filteredCategory ? `${filteredCategory} products` : "Our Products"}
+        </h1>
         <div className="grid grid-cols-1 pb-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6">
           {list.map((product) => (
             <div
@@ -104,28 +110,24 @@ export default function Children({ category: propCategory }) {
                     {product.name}
                   </h4>
                   <div className="flex items-center justify-between">
+                    <p className="text-md text-primary font-semibold">
+                      Rs. {product.price}
+                    </p>
 
-                  
-                  <p className="text-md text-primary font-semibold">
-                    Rs. {product.price}
-                  </p>
-                 
-                  {/* Product Colors */}
-                  {product.colors && (
-                    <div className="flex gap-2 mt-2">
-                      {product.colors.split(",").map((color, index) => (
-                        <span
-                          key={index}
-                          className="w-6 h-6 rounded-full"
-                          style={{ backgroundColor: color.trim() }}
-                        ></span>
-                      ))} <p>
-                    {product.colors}
-                  </p>
-                    </div>
-                  )}
+                    {/* Product Colors */}
+                    {product.colors && (
+                      <div className="flex gap-2 mt-2">
+                        {product.colors.split(",").map((color, index) => (
+                          <span
+                            key={index}
+                            className="w-6 h-6 rounded-full"
+                            style={{ backgroundColor: color.trim() }}
+                          ></span>
+                        ))}{" "}
+                        <p>{product.colors}</p>
+                      </div>
+                    )}
                   </div>
-
                 </div>
               </Link>
               {/* Action Buttons */}

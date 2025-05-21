@@ -2,8 +2,19 @@ const Wishlist = require("../Models/WishlistModel");
 
 // create a new Wishlist
 const createWishlist = async (req, res) => {
+  console.log("Received wishlist request body:", req.body);
+  console.log("Authenticated user:", req.user);
+
   const { product_name, product_price, product_category, product_image } =
     req.body;
+
+  // Log data types
+  console.log("Data types:", {
+    product_name: typeof product_name,
+    product_price: typeof product_price,
+    product_category: typeof product_category,
+    product_image: typeof product_image,
+  });
 
   const isAdded = await Wishlist.findOne({ product_name });
 

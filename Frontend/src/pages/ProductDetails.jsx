@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
 import { getProductById } from "../redux/product/productSlice";
 import { addToCart } from "../redux/cart/cartSlice";
-import { addToWishlist } from "../redux/wishlist/wishlistSlice";
+import { addToWishlist, userWishlist } from "../redux/wishlist/wishlistSlice";
 import Loader from "./../components/Loader";
 
 const ProductDetails = () => {
@@ -14,8 +14,8 @@ const ProductDetails = () => {
 
   const { id } = useParams();
 
-  const { product, loading } = useSelector((state) => ({ ...state.products }));
-  const { wishitems, error } = useSelector((state) => ({ ...state.wishlist }));
+  const { products, error } = useSelector((state) => state.products);
+  const { wishitems } = useSelector((state) => state.wishlist);
   const { isLoggedIn } = useSelector((state) => state.user);
 
   useEffect(() => {
@@ -24,34 +24,46 @@ const ProductDetails = () => {
     }
   }, [id, getProductById]);
 
+  useEffect(() => {
+      if (isLoggedIn) {
+          dispatch(userWishlist());
+      }
+    }, [dispatch, isLoggedIn]);
+
   // Check if the product is already in the wishlist
   const isProductInWishlist = () => {
     return wishitems.some((item) => item.product_name === product.name);
   };
 
-  // add to wishlist
   const addWishlist = (e) => {
     e.preventDefault();
 
-    if (isProductInWishlist()) {
-      toast.error("Product already added wishlist");
-    } else {
-      dispatch(
-        addToWishlist({
-          product_name: product.name,
-          product_price: product.price,
-          product_category: product.category,
-          product_image: product.image,
-        })
-      );
+    if (!isLoggedIn) {
+      toast.error("Please log in to add to wishlist");
+      navigate("/login");
+      return;
     }
+
+    // First check if product is already in wishlist
+    if (isProductInWishlist()) {
+      toast.info("This product is already in your wishlist");
+      return; // Don't even attempt the API call
+    }
+
+    dispatch(
+      addToWishlist({
+        product_name: product.name,
+        product_price: product.price,
+        product_category: product.category,
+        product_image: product.image,
+      })
+    );
   };
+
   // Handle size selection
   const handleSizeChange = (e) => {
     setSelectedSize(e.target.value);
   };
-
- 
 
   // Updated handleCart function
   const handleCart = (e) => {
@@ -63,17 +75,21 @@ const ProductDetails = () => {
     }
 
     if (isLoggedIn) {
-    // Check if the product with the same size is already in the cart
-    
-      const newCartItem = { ...product,pid: product._id, size: selectedSize, quantity: quantity };
-      
+      // Check if the product with the same size is already in the cart
+
+      const newCartItem = {
+        ...product,
+        pid: product._id,
+        size: selectedSize,
+        quantity: quantity,
+      };
+
       dispatch(addToCart(newCartItem));
-    
-  } else {
-    toast.error("Please log in to add to cart");
-    navigate("/login");
-  }
-};
+    } else {
+      toast.error("Please log in to add to cart");
+      navigate("/login");
+    }
+  };
 
   return (
     <>

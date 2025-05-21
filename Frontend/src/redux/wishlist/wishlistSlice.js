@@ -7,24 +7,36 @@ export const addToWishlist = createAsyncThunk(
   async (wishData, { rejectWithValue }) => {
     try {
       const response = await service.createWishlist(wishData);
-      if (response.data) {
-        toast.success("Product Added to wishlist");
-      }
+      toast.success("Product added to wishlist");
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response.data);
+      // Check specifically for the "already in wishlist" error
+      if (error.response?.data?.message === "Product already added to wishlist") {
+        // Show an info toast instead of an error
+        toast.info("This product is already in your wishlist");
+        // Still need to return the rejection for proper state handling
+        return rejectWithValue({ message: error.response.data.message, alreadyExists: true });
+      }
+      
+      // For other errors, show error toast
+      toast.error(error.response?.data?.message || "Failed to add to wishlist");
+      return rejectWithValue(error.response?.data);
     }
   }
 );
 
 export const userWishlist = createAsyncThunk(
   "wishlist/getUserWishlist",
-  async (id, { rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const response = await service.getUserWishlist(id);
+      const response = await service.getUserWishlist();
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response.data);
+      // If error is 404 "Wishlist not found", just return empty array
+      if (error.response?.status === 404) {
+        return [];
+      }
+      return rejectWithValue(error.response?.data || { message: "Failed to fetch wishlist" });
     }
   }
 );
@@ -56,7 +68,7 @@ const wishlistSlice = createSlice({
   extraReducers: (builder) => {
     builder
 
-    // add to wishlist 
+      // add to wishlist
       .addCase(addToWishlist.pending, (state) => {
         state.loading = true;
       })
@@ -70,9 +82,6 @@ const wishlistSlice = createSlice({
         state.error = action.payload.message;
       })
 
-
-
-
       // get users wishlist
       .addCase(userWishlist.pending, (state) => {
         state.loading = true;
@@ -81,7 +90,6 @@ const wishlistSlice = createSlice({
         state.loading = false;
         // console.log(action);
         state.wishitems = action.payload;
-        
       })
       .addCase(userWishlist.rejected, (state, action) => {
         state.loading = false;
@@ -89,10 +97,6 @@ const wishlistSlice = createSlice({
         state.error = action.payload.message;
       })
 
-
-
-
-      
       // delete users wishlist
       .addCase(deleteWishlist.pending, (state) => {
         state.loading = true;
@@ -107,7 +111,7 @@ const wishlistSlice = createSlice({
         }
         toast.success("items removed from wishlist");
       })
-      
+
       .addCase(deleteWishlist.rejected, (state, action) => {
         state.loading = false;
         // console.log(action.payload);

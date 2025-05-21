@@ -13,4 +13,8 @@ router
   .route("/getwishlist")
   .get(verifyToken, wishlistcontroller.getUserWishlist);
 
+router
+  .route("/createwishlist")
+  .post(verifyToken, wishlistcontroller.createWishlist);
+
 module.exports = router;

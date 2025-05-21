@@ -7,15 +7,16 @@ import { getProducts } from "../redux/product/productSlice";
 import { toast } from "react-toastify";
 import { addToCart } from "../redux/cart/cartSlice";
 import ReactPaginate from "react-paginate";
-import { addToWishlist } from "../redux/wishlist/wishlistSlice";
+import { addToWishlist, userWishlist } from "../redux/wishlist/wishlistSlice";
 import axios from "axios";
 
 export default function Products() {
-  const { products, error } = useSelector((state) => ({ ...state.products }));
-  const { wishitems } = useSelector((state) => ({ ...state.wishlist }));
-  const { isLoggedIn,user } = useSelector((state) => state.user);
+  // Fix Redux selectors to avoid unnecessary re-renders
+  const { products, error } = useSelector(state => state.products);
+  const { wishitems } = useSelector(state => state.wishlist);
+  const { isLoggedIn, user } = useSelector(state => state.user);
 
-  const [list, setList] = useState(products);
+  const [list, setList] = useState([]);
   const [categories, setCategories] = useState();
   const [selectedCategory, setSelectedCategory] = useState();
   const [priceRange, setPriceRange] = useState();
@@ -26,6 +27,21 @@ export default function Products() {
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
+
+  // Load wishlist data when component mounts
+  useEffect(() => {
+    if (isLoggedIn) {
+      console.log("Loading wishlist data...");
+      dispatch(userWishlist())
+        .unwrap()
+        .then((data) => {
+          console.log("Wishlist loaded successfully:", data);
+        })
+        .catch((error) => {
+          console.error("Error loading wishlist:", error);
+        });
+    }
+  }, [isLoggedIn, dispatch]);
 
   let priceArr = products.map((item) => item.price);
   let maxPrice = Math.max(...priceArr);
@@ -49,21 +65,21 @@ export default function Products() {
     }
   }, [error]);
 
-    useEffect(() => {
-        if (products) {
-          const filteredProducts = products.filter((product) =>
-            product.name.toLowerCase().includes(keywords.toLowerCase())
-          );
-          if (selectedCategory) {
-            setList(
-              filteredProducts.filter((item) => item.category === selectedCategory)
-            );
-          } else {
-            setList(filteredProducts);
-          }
-        }
-    }, [keywords, selectedCategory, products]);
-  
+  useEffect(() => {
+    if (products) {
+      const filteredProducts = products.filter((product) =>
+        product.name.toLowerCase().includes(keywords.toLowerCase())
+      );
+      if (selectedCategory) {
+        setList(
+          filteredProducts.filter((item) => item.category === selectedCategory)
+        );
+      } else {
+        setList(filteredProducts);
+      }
+    }
+  }, [keywords, selectedCategory, products]);
+
   useEffect(() => {
     const getCategories = async () => {
       const response = await axios.get(
@@ -74,12 +90,27 @@ export default function Products() {
     getCategories();
   }, []);
 
-   const filterCategory = (cat_name) => {
+  const filterCategory = (cat_name) => {
     setSelectedCategory(cat_name);
   };
 
+  // Improved isProductInWishlist function
+  const isProductInWishlist = (productName) => {
+    // Add a safety check to handle undefined or empty wishitems
+    if (!wishitems || wishitems.length === 0) {
+      return false;
+    }
+    
+    // Debug - see what we're comparing against
+    console.log("Checking if product exists:", productName);
+    console.log("Current wishlist items:", wishitems.map(item => item.product_name));
+    
+    // Check for the product name in the wishlist
+    return wishitems.some((item) => item.product_name === productName);
+  };
+
   // price filter
-   const handlePrice = (e) => {
+  const handlePrice = (e) => {
     setPrice(e.target.value);
     setPriceRange(e.target.value);
 
@@ -110,14 +141,9 @@ export default function Products() {
   }, [products, selectedCategory]);
 
   
-  // Add to cart handler
+  // Updated addToCartHandler
   const addToCartHandler = (product) => {
-    console.log(product)
     if (isLoggedIn) {
-     /*  if (user.email_verified === false) {
-        toast.error("Please verify your account to add to cart");
-        return;
-      } */
       // Get the first size from the product.size array
       const firstSize = product.size && product.size.length > 0 ? product.size[0] : null;
       
@@ -144,25 +170,28 @@ export default function Products() {
     }
   };
 
-  // Add to wishlist
+  // Updated addWishlist function
   const addWishlist = (product) => {
-    if (isProductInWishlist(product._id)) {
-      toast.error("Product already added to wishlist");
-    } else {
-      dispatch(
-        addToWishlist({
-          product_name: product.name,
-          product_price: product.price,
-          product_category: product.category,
-          product_image: product.image,
-        })
-      );
+    if (!isLoggedIn) {
+      toast.error("Please log in to add to wishlist");
+      navigate("/login");
+      return;
     }
-  };
 
-  // Check if the product is already in the wishlist
-  const isProductInWishlist = (productId) => {
-    return wishitems.some((item) => item.product_id === productId);
+    // Check BEFORE dispatching if the product is already in wishlist
+    if (isProductInWishlist(product.name)) {
+      toast.info("This product is already in your wishlist");
+      return; // Don't dispatch the action at all
+    }
+
+    dispatch(
+      addToWishlist({
+        product_name: product.name,
+        product_price: product.price,
+        product_category: product.category,
+        product_image: product.image
+      })
+    );
   };
 
   const startIndex = currentPage * itemsPerPage;
@@ -231,7 +260,7 @@ export default function Products() {
                 </div>
 
                 {/* Price Filter */}
-                 <div className="w-full ">
+                <div className="w-full ">
                   <div className="price_box">
                     <h3 className="text-xl border-b-2 border-red-800  font-mono     font-bold  my-2">
                       {" "}

@@ -6,9 +6,10 @@ import { FaHeart } from "react-icons/fa6";
 import { getProducts } from "../redux/product/productSlice";
 import { toast } from "react-toastify";
 import { addToCart } from "../redux/cart/cartSlice";
-
+import { addToWishlist, userWishlist } from "../redux/wishlist/wishlistSlice";
 export default function Men({ category: propCategory }) {
-  const { products, error } = useSelector((state) => ({ ...state.products }));
+  const { products, error } = useSelector((state) => state.products);
+  const { wishitems } = useSelector((state) => state.wishlist);
   const { category: routeCategory } = useParams();
   const { isLoggedIn } = useSelector((state) => state.user);
   const [list, setList] = useState([]);
@@ -18,7 +19,11 @@ export default function Men({ category: propCategory }) {
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
-
+  useEffect(() => {
+    if (isLoggedIn) {
+      dispatch(userWishlist());
+    }
+  }, [dispatch, isLoggedIn]);
   useEffect(() => {
     dispatch(getProducts()); // Fetch all products
   }, [dispatch]);
@@ -48,42 +53,40 @@ export default function Men({ category: propCategory }) {
   }, [error]);
 
   const addToCartHandler = (product) => {
-      if (isLoggedIn) {
-        // Get the first size from the product.size array
-        const firstSize = product.size && product.size.length > 0 ? product.size[0] : null;
-  
-        if (!firstSize) {
-          toast.error("No size available for this product");
-          return;
-        }
-  
-        const cartItem = {
-          pid: product._id,
-          name: product.name,
-          price: product.price,
-          quantity: 1, 
-          category: product.category,
-          image: product.image,
-          size: firstSize,
-        };
-  
-        // Dispatch the addToCartAsync action
-        dispatch(addToCart(cartItem));
-      } else {
-        toast.error("Please log in to add to cart");
-        navigate("/login");
+    if (isLoggedIn) {
+      // Get the first size from the product.size array
+      const firstSize =
+        product.size && product.size.length > 0 ? product.size[0] : null;
+
+      if (!firstSize) {
+        toast.error("No size available for this product");
+        return;
       }
-    };
+
+      const cartItem = {
+        pid: product._id,
+        name: product.name,
+        price: product.price,
+        quantity: 1,
+        category: product.category,
+        image: product.image,
+        size: firstSize,
+      };
+
+      // Dispatch the addToCartAsync action
+      dispatch(addToCart(cartItem));
+    } else {
+      toast.error("Please log in to add to cart");
+      navigate("/login");
+    }
+  };
 
   return (
     <div className="bg-gray-50 overflow-x-hidden py-10">
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-       
-
         <h1 className="text-3xl mb-4 font-bold tracking-tight text-red-600 pt-6  text-center border-b-2 inline-table  border-red-600 uppercase">
-  {filteredCategory ? `${filteredCategory} products` : "Our Products"}
-</h1>
-
+          {filteredCategory ? `${filteredCategory} products` : "Our Products"}
+        </h1>
 
         <div className="grid grid-cols-1 pb-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6">
           {list.map((product) => (
