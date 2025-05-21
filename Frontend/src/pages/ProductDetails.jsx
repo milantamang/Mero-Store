@@ -14,7 +14,7 @@ const ProductDetails = () => {
 
   const { id } = useParams();
 
-  const { products, error } = useSelector((state) => state.products);
+  const { product, loading, error } = useSelector((state) => state.products);
   const { wishitems } = useSelector((state) => state.wishlist);
   const { isLoggedIn } = useSelector((state) => state.user);
 

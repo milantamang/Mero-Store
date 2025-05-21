@@ -11,13 +11,18 @@ export const addToWishlist = createAsyncThunk(
       return response.data;
     } catch (error) {
       // Check specifically for the "already in wishlist" error
-      if (error.response?.data?.message === "Product already added to wishlist") {
+      if (
+        error.response?.data?.message === "Product already added to wishlist"
+      ) {
         // Show an info toast instead of an error
         toast.info("This product is already in your wishlist");
         // Still need to return the rejection for proper state handling
-        return rejectWithValue({ message: error.response.data.message, alreadyExists: true });
+        return rejectWithValue({
+          message: error.response.data.message,
+          alreadyExists: true,
+        });
       }
-      
+
       // For other errors, show error toast
       toast.error(error.response?.data?.message || "Failed to add to wishlist");
       return rejectWithValue(error.response?.data);
@@ -36,7 +41,9 @@ export const userWishlist = createAsyncThunk(
       if (error.response?.status === 404) {
         return [];
       }
-      return rejectWithValue(error.response?.data || { message: "Failed to fetch wishlist" });
+      return rejectWithValue(
+        error.response?.data || { message: "Failed to fetch wishlist" }
+      );
     }
   }
 );
@@ -78,8 +85,19 @@ const wishlistSlice = createSlice({
       })
       .addCase(addToWishlist.rejected, (state, action) => {
         state.loading = false;
-        console.log(action.payload);
-        state.error = action.payload.message;
+
+        // Log the exact error details to help debug
+        console.error("Wishlist error details:", action.payload);
+
+        // Set the error message
+        state.error = action.payload?.message || "Unknown error";
+
+        // If it's already in wishlist, don't show error toast
+        if (action.payload?.message === "Product already added to wishlist") {
+          toast.info("This product is already in your wishlist");
+        } else {
+          toast.error(state.error);
+        }
       })
 
       // get users wishlist

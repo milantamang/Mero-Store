@@ -12,9 +12,9 @@ import axios from "axios";
 
 export default function Products() {
   // Fix Redux selectors to avoid unnecessary re-renders
-  const { products, error } = useSelector(state => state.products);
-  const { wishitems } = useSelector(state => state.wishlist);
-  const { isLoggedIn, user } = useSelector(state => state.user);
+  const { products, error } = useSelector((state) => state.products);
+  const { wishitems } = useSelector((state) => state.wishlist);
+  const { isLoggedIn, user } = useSelector((state) => state.user);
 
   const [list, setList] = useState([]);
   const [categories, setCategories] = useState();
@@ -97,16 +97,21 @@ export default function Products() {
   // Improved isProductInWishlist function
   const isProductInWishlist = (productName) => {
     // Add a safety check to handle undefined or empty wishitems
-    if (!wishitems || wishitems.length === 0) {
+    if (!wishitems || !Array.isArray(wishitems) || wishitems.length === 0) {
       return false;
     }
-    
+
     // Debug - see what we're comparing against
     console.log("Checking if product exists:", productName);
-    console.log("Current wishlist items:", wishitems.map(item => item.product_name));
-    
+    console.log(
+      "Current wishlist items:",
+      wishitems.map((item) => item.product_name)
+    );
+
     // Check for the product name in the wishlist
-    return wishitems.some((item) => item.product_name === productName);
+    return wishitems.some(item => 
+    item.product_name && item.product_name.toLowerCase() === productName.toLowerCase()
+  );
   };
 
   // price filter
@@ -140,13 +145,13 @@ export default function Products() {
     applIFilters();
   }, [products, selectedCategory]);
 
-  
   // Updated addToCartHandler
   const addToCartHandler = (product) => {
     if (isLoggedIn) {
       // Get the first size from the product.size array
-      const firstSize = product.size && product.size.length > 0 ? product.size[0] : null;
-      
+      const firstSize =
+        product.size && product.size.length > 0 ? product.size[0] : null;
+
       if (!firstSize) {
         toast.error("No size available for this product");
         return;
@@ -156,7 +161,7 @@ export default function Products() {
         pid: product._id,
         name: product.name,
         price: product.price,
-        quantity: 1, 
+        quantity: 1,
         category: product.category,
         image: product.image,
         size: firstSize,
@@ -189,7 +194,7 @@ export default function Products() {
         product_name: product.name,
         product_price: product.price,
         product_category: product.category,
-        product_image: product.image
+        product_image: product.image,
       })
     );
   };
@@ -318,7 +323,11 @@ export default function Products() {
                         </button>
                         <button
                           onClick={() => addWishlist(product)}
-                          className="flex p-2 items-center justify-center w-8 h-8 text-white bg-red-700 rounded-full hover:bg-primary transition duration-300 focus:outline-none"
+                          className={`flex p-2 items-center justify-center w-8 h-8 text-white ${
+                            isProductInWishlist(product.name)
+                              ? "bg-red-500" // Already in wishlist
+                              : "bg-red-700" // Not in wishlist
+                          } rounded-full hover:bg-primary transition duration-300 focus:outline-none`}
                         >
                           <FaHeart className="text-xl" />
                         </button>

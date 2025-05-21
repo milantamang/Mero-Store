@@ -2,41 +2,39 @@ const Wishlist = require("../Models/WishlistModel");
 
 // create a new Wishlist
 const createWishlist = async (req, res) => {
-  console.log("Received wishlist request body:", req.body);
-  console.log("Authenticated user:", req.user);
-
-  const { product_name, product_price, product_category, product_image } =
-    req.body;
-
-  // Log data types
-  console.log("Data types:", {
-    product_name: typeof product_name,
-    product_price: typeof product_price,
-    product_category: typeof product_category,
-    product_image: typeof product_image,
-  });
-
-  const isAdded = await Wishlist.findOne({ product_name });
-
-  if (isAdded)
-    return res
-      .status(400)
-      .json({ message: "Product already added to wishlist" });
-
-  const wishlist = new Wishlist({
-    user: req.user.id,
-    product_name,
-    product_price,
-    product_category,
-    product_image,
-  });
   try {
+    const { product_name, product_price, product_category, product_image } = req.body;
+    
+    // Check if the user already has this product in their wishlist
+    const isAdded = await Wishlist.findOne({ 
+      product_name, 
+      user: req.user.id  // Check for the specific user
+    });
+
+    if (isAdded) {
+      return res.status(400).json({ message: "Product already added to wishlist" });
+    }
+
+    // Convert price to number if it's a string
+    const price = typeof product_price === 'string' ? parseFloat(product_price) : product_price;
+    
+    // Create new wishlist item
+    const wishlist = new Wishlist({
+      user: req.user.id,
+      product_name,
+      product_price: price,
+      product_category,
+      product_image,
+    });
+    
     const savedWishlist = await wishlist.save();
-    res
-      .status(200)
-      .json({ savedWishlist, message: "product added wishlist successfully" });
+    return res.status(200).json({ 
+      savedWishlist, 
+      message: "Product added to wishlist successfully" 
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Wishlist error:", error);
+    return res.status(500).json({ message: error.message });
   }
 };
 
