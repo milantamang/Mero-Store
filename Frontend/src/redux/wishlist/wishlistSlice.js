@@ -92,10 +92,9 @@ const wishlistSlice = createSlice({
         // Set the error message
         state.error = action.payload?.message || "Unknown error";
 
-        // If it's already in wishlist, don't show error toast
-        if (action.payload?.message === "Product already added to wishlist") {
-          toast.info("This product is already in your wishlist");
-        } else {
+        // REMOVED DUPLICATE TOAST - it's already shown in the thunk
+        // Only show error messages for non-wishlist duplicates
+        if (action.payload?.message !== "Product already added to wishlist") {
           toast.error(state.error);
         }
       })
@@ -106,12 +105,10 @@ const wishlistSlice = createSlice({
       })
       .addCase(userWishlist.fulfilled, (state, action) => {
         state.loading = false;
-        // console.log(action);
         state.wishitems = action.payload;
       })
       .addCase(userWishlist.rejected, (state, action) => {
         state.loading = false;
-        // console.log(action.payload);
         state.error = action.payload.message;
       })
 
@@ -127,12 +124,10 @@ const wishlistSlice = createSlice({
         if (id) {
           state.wishitems = state.wishitems.filter((item) => item._id !== id);
         }
-        toast.success("items removed from wishlist");
+        toast.success("Items removed from wishlist");
       })
-
       .addCase(deleteWishlist.rejected, (state, action) => {
         state.loading = false;
-        // console.log(action.payload);
         state.error = action.payload.message;
       });
   },

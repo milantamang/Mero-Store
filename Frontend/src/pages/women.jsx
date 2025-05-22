@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { FaCartArrowDown } from "react-icons/fa";
 import { FaHeart } from "react-icons/fa6";
@@ -24,11 +24,13 @@ export default function Women({ category: propCategory }) {
   useEffect(() => {
     dispatch(getProducts()); // Fetch all products
   }, [dispatch]);
+  
   useEffect(() => {
     if (isLoggedIn) {
       dispatch(userWishlist());
     }
   }, [dispatch, isLoggedIn]);
+  
   useEffect(() => {
     // Determine the active category (from props, route, or default)
     setFilteredCategory(propCategory || routeCategory || "");
@@ -52,6 +54,41 @@ export default function Women({ category: propCategory }) {
       toast.error(error);
     }
   }, [error]);
+
+  // Check if product is in wishlist
+  const isProductInWishlist = (productName) => {
+    if (!wishitems || !Array.isArray(wishitems) || wishitems.length === 0) {
+      return false;
+    }
+    return wishitems.some(item => 
+      item.product_name && item.product_name.toLowerCase() === productName.toLowerCase()
+    );
+  };
+
+  // Add to wishlist handler
+  const handleAddToWishlist = (product) => {
+    if (!isLoggedIn) {
+      toast.error("Please log in to add to wishlist");
+      navigate("/login");
+      return;
+    }
+
+    // Check if already in wishlist
+    if (isProductInWishlist(product.name)) {
+      toast.info("This product is already in your wishlist");
+      return;
+    }
+
+    // Add to wishlist
+    dispatch(
+      addToWishlist({
+        product_name: product.name,
+        product_price: product.price,
+        product_category: product.category,
+        product_image: product.image,
+      })
+    );
+  };
 
   const addToCartHandler = (product) => {
     if (isLoggedIn) {
@@ -81,13 +118,6 @@ export default function Women({ category: propCategory }) {
       navigate("/login");
     }
   };
-
-  useEffect(() => {
-    if (products) {
-      console.log("Products fetched:", products); // Debugging log
-    }
-    console.log("Filtered category:", filteredCategory); // Debugging log
-  }, [products, filteredCategory]);
 
   return (
     <div className="bg-gray-50 overflow-x-hidden py-10">
@@ -145,7 +175,14 @@ export default function Women({ category: propCategory }) {
                 >
                   <FaCartArrowDown className="text-xl" />
                 </button>
-                <button className="flex p-2 items-center justify-center w-8 h-8 text-white bg-red-700 rounded-full hover:bg-primary transition duration-300 focus:outline-none">
+                <button 
+                  onClick={() => handleAddToWishlist(product)}
+                  className={`flex p-2 items-center justify-center w-8 h-8 text-white ${
+                    isProductInWishlist(product.name)
+                      ? "bg-red-500" // Already in wishlist
+                      : "bg-red-700" // Not in wishlist
+                  } rounded-full hover:bg-primary transition duration-300 focus:outline-none`}
+                >
                   <FaHeart className="text-xl" />
                 </button>
               </div>

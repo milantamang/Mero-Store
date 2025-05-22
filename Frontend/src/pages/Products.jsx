@@ -184,10 +184,10 @@ export default function Products() {
     }
 
     // Check BEFORE dispatching if the product is already in wishlist
-    if (isProductInWishlist(product.name)) {
-      toast.info("This product is already in your wishlist");
-      return; // Don't dispatch the action at all
-    }
+    // if (isProductInWishlist(product.name)) {
+    //   toast.info("This product is already in your wishlist");
+    //   return; // Don't dispatch the action at all
+    // }
 
     dispatch(
       addToWishlist({
