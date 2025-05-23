@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { MdDelete, MdAddCircleOutline } from "react-icons/md";
-import { CLOUDINARY_URL, UPLOAD_PRESET } from "../../utils/constants";
+import { CLOUDINARY_URL, UPLOAD_PRESET } from "../../utils/Cloudinary";
 
 const AddOffer = () => {
   const [offers, setOffers] = useState([]);

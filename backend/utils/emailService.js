@@ -9,10 +9,10 @@ require('dotenv').config();
 // Create reusable transporter object using SMTP transport
 const createTransporter = () => {
   return nodemailer.createTransport({
-    service: 'gmail',
+    service: 'gmail',// using gmail to send email
     auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
+      user: process.env.EMAIL_USER,//gmail from .env file
+      pass: process.env.EMAIL_PASS,//password from .env file
     },
   });
 };
