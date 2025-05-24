@@ -25,20 +25,12 @@ const userRegister = async (req, res) => {
     });
 
     if (result) {
-      // Generate verification token
-      const verificationToken = jwt.sign(
-        { id: result._id.toString() },
-        JWT_SECRET,
-        { expiresIn: "24h" }
-      );
-
-      // Send verification email
-      await emailService.sendRegistrationEmail(result, verificationToken);
-
       return res.status(200).json({
-        ...result._doc,
+        _id: result._id,
+        name: result.username,
+        email: result.email,
         message:
-          "Registration successful. Please check your email to verify your account.",
+          "Registration successful. Please login to verify your email with OTP.",
       });
     }
   } catch (err) {
@@ -77,7 +69,7 @@ const userLogin = async (req, res) => {
       user_role: user.role,
       email_verified: user.emailVerified,
       address: user.address,
-      phoneNumber: user.phoneNumber
+      phoneNumber: user.phoneNumber,
     });
   } catch (err) {
     return res.status(500).json({ message: err.message });
@@ -113,7 +105,6 @@ const requestLoginOTP = asyncHandler(async (req, res) => {
 // -------------------verify login OTP-------------
 const verifyLoginOTP = asyncHandler(async (req, res) => {
   try {
-   
     const { userEmail, otp } = req.body;
     // Verify OTP
     const isValid = await otpUtil.verifyOTP(userEmail, otp, "login");
@@ -121,14 +112,14 @@ const verifyLoginOTP = asyncHandler(async (req, res) => {
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
     // Get user details
-    const user = await User.findOne({email: userEmail});
+    const user = await User.findOne({ email: userEmail });
     // Generate token
     const user_token = jwt.sign(
       { id: user._id, email: user.email, role: user.role },
       JWT_SECRET,
       { expiresIn: "3d" }
     );
-   
+
     // Return user details and token
     return res.status(200).json({
       _id: user.id,
@@ -156,18 +147,17 @@ const Profile = async (req, res) => {
     // Verify the token
     const decoded = jwt.verify(token, JWT_SECRET);
 
-
     // Find the user by ID
     const user = await User.findById(decoded.id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
     // Update the user's profile with the data from the request body
-    const { name, email,address,phoneNumber } = req.body;
+    const { name, email, address, phoneNumber } = req.body;
     if (name) user.username = name; // Update username
     if (email) user.email = email; // Update email
     if (address) user.address = address;
-    if(phoneNumber) user.phoneNumber = phoneNumber
+    if (phoneNumber) user.phoneNumber = phoneNumber;
     // Save the updated user to the database
     const updatedUser = await user.save();
     res.json({
@@ -252,7 +242,9 @@ const changePassword = async (req, res) => {
 
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) {
-      return res.status(401).json({ message: "Current password is incorrect." });
+      return res
+        .status(401)
+        .json({ message: "Current password is incorrect." });
     }
 
     const saltRounds = 10;
@@ -325,7 +317,7 @@ const emailVerificationRequest = async (req, res) => {
     });
 
     // Send verification email
-    await emailService.sendRegistrationEmail(user, token);
+    // await emailService.sendRegistrationEmail(user, token);
 
     res
       .status(200)
@@ -368,7 +360,7 @@ const verifyEmail = async (req, res) => {
 const requestVerificationOTP = asyncHandler(async (req, res) => {
   try {
     const { email, purpose = "verification" } = req.body;
-  
+
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -395,7 +387,7 @@ const requestVerificationOTP = asyncHandler(async (req, res) => {
 const verifyEmailWithOTP = asyncHandler(async (req, res) => {
   try {
     const { userEmail, otp } = req.body;
-   
+
     // Verify OTP
     const isValid = await otpUtil.verifyOTP(userEmail, otp, "verification");
     if (!isValid) {
@@ -403,7 +395,7 @@ const verifyEmailWithOTP = asyncHandler(async (req, res) => {
     }
 
     // Update user verification status
-    const user = await User.findOne({email: userEmail});
+    const user = await User.findOne({ email: userEmail });
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -415,7 +407,8 @@ const verifyEmailWithOTP = asyncHandler(async (req, res) => {
     await emailService.sendWelcomeEmail(user);
 
     return res.status(200).json({
-      email: user.email,message:"Email verified successfully"
+      email: user.email,
+      message: "Email verified successfully",
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -436,5 +429,5 @@ module.exports = {
   verifyLoginOTP,
   requestVerificationOTP,
   verifyEmailWithOTP,
-  changePassword
+  changePassword,
 };

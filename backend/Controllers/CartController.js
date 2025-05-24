@@ -7,7 +7,7 @@ const ALL_SIZES = ["S", "M", "L", "XL", "XXL"];
 
 const addToCart = async (req, res) => {
   try {
-    const { pid, name, price, quantity, category, image, size } = req.body;
+    const { pid, name, price, quantity, category, image, size, selectedColor } = req.body;
 
     const user = await User.findById(req.user.id);
     if (!user) {
@@ -62,6 +62,7 @@ const addToCart = async (req, res) => {
         category,
         image,
         size,
+        selectedColor,
       });
     }
 

@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
 
-
 const cartSchema = new mongoose.Schema(
   {
     user: {
@@ -38,8 +37,11 @@ const cartSchema = new mongoose.Schema(
           type: String,
           required: true,
         },
+        selectedColor: {
+          type: String,
+          default: "",
+        },
       },
-
     ],
   },
   { timestamps: true } // Automatically add createdAt and updatedAt fields

@@ -13,7 +13,8 @@ const ProductDetails = () => {
   const [selectedSize, setSelectedSize] = useState(""); // Store selected product size
   const dispatch = useDispatch(); // Hook to dispatch Redux actions
   const [quantity, setQuantity] = useState(1); // Store selected quantity (default 1)
-
+  const [lastToastMessage, setLastToastMessage] = useState(""); // **NEW: Track last toast to prevent duplicates**
+  const [selectedColor, setSelectedColor] = useState("");
   const { id } = useParams(); // Get product ID from URL parameters
 
   // Get data from Redux store
@@ -21,19 +22,76 @@ const ProductDetails = () => {
   const { wishitems } = useSelector((state) => state.wishlist); // User's wishlist items
   const { isLoggedIn } = useSelector((state) => state.user); // User login status
 
+  // **NEW: Size options array to match backend**
+  const SIZE_OPTIONS = ["S", "M", "L", "XL", "XXL"];
+
+  // **NEW: Function to show toast only if different from last one**
+  const showToast = (message, type = "error") => {
+    if (message !== lastToastMessage) {
+      if (type === "error") {
+        toast.error(message);
+      } else if (type === "warning") {
+        toast.warning(message);
+      } else if (type === "success") {
+        toast.success(message);
+      }
+      setLastToastMessage(message);
+
+      // Clear the last message after 3 seconds to allow same message again later
+      setTimeout(() => {
+        setLastToastMessage("");
+      }, 3000);
+    }
+  };
+
+  // **NEW: Function to get available stock for selected size**
+  const getAvailableStock = () => {
+    if (!product || !selectedSize || !product.stock) {
+      return 0; // Return 0 if no product, size, or stock data
+    }
+
+    // Find the index of selected size in SIZE_OPTIONS array
+    const sizeIndex = SIZE_OPTIONS.indexOf(selectedSize);
+    if (sizeIndex === -1) {
+      return 0; // Return 0 if size not found
+    }
+
+    // Return stock quantity for the selected size
+    return product.stock[sizeIndex] || 0;
+  };
+
+  // **NEW: Function to check if selected size is in stock**
+  const isInStock = () => {
+    return getAvailableStock() > 0;
+  };
+
   // Effect hook: Fetch product details when component loads or ID changes
   useEffect(() => {
     if (id) {
       dispatch(getProductById(id)); // Fetch product data by ID
     }
-  }, [id, getProductById]);
+  }, [id, dispatch]); // **FIXED: Added dispatch to dependency array**
 
   // Effect hook: Load user's wishlist when logged in
   useEffect(() => {
-      if (isLoggedIn) {
-          dispatch(userWishlist()); // Fetch user's wishlist items
+    if (isLoggedIn) {
+      dispatch(userWishlist()); // Fetch user's wishlist items
+    }
+  }, [dispatch, isLoggedIn]);
+
+  // **NEW: Effect to reset quantity when size changes (gentle reset)**
+  useEffect(() => {
+    if (selectedSize) {
+      const availableStock = getAvailableStock();
+      // Only reset quantity if current quantity exceeds available stock
+      if (quantity > availableStock && availableStock > 0) {
+        setQuantity(availableStock);
+      } else if (availableStock === 0) {
+        setQuantity(1); // Reset to 1 if no stock
       }
-    }, [dispatch, isLoggedIn]);
+      // Don't reset to 1 if current quantity is valid
+    }
+  }, [selectedSize]); // Only depend on selectedSize, not quantity to avoid loops
 
   // Function to check if current product is already in user's wishlist
   const isProductInWishlist = () => {
@@ -46,14 +104,13 @@ const ProductDetails = () => {
 
     // Check if user is logged in
     if (!isLoggedIn) {
-      toast.error("Please log in to add to wishlist");
-      navigate("/login");
+      showToast("Please log in to add to wishlist");
       return;
     }
 
     // Check if product is already in wishlist to avoid duplicates
     if (isProductInWishlist()) {
-      toast.info("This product is already in your wishlist");
+      showToast("This product is already in your wishlist", "warning");
       return; // Don't even attempt the API call
     }
 
@@ -68,11 +125,99 @@ const ProductDetails = () => {
     );
   };
 
-  // Function to handle size selection from dropdown
+  // **MODIFIED: Function to handle size selection with stock notification**
   const handleSizeChange = (e) => {
-    setSelectedSize(e.target.value); // Update selected size state
+    const newSize = e.target.value;
+    setSelectedSize(newSize); // Update selected size state
+
+    // Check stock for newly selected size and show toast if out of stock
+    if (newSize) {
+      const sizeIndex = SIZE_OPTIONS.indexOf(newSize);
+      const sizeStock =
+        product.stock && product.stock[sizeIndex]
+          ? product.stock[sizeIndex]
+          : 0;
+
+      if (sizeStock === 0) {
+        showToast(`Size ${newSize} is completely out of stock`, "warning");
+      } else if (sizeStock === 1) {
+        // Optional: You can comment this out if you don't want to show this message
+        // showToast(`Only 1 item available for size ${newSize}`, "warning");
+      }
+    }
+  };
+  const handleColorSelection = (color) => {
+    setSelectedColor(color.trim()); // Update selected color state, trim to remove spaces
+    console.log("Selected color:", color.trim()); // Debug log to see selected color
+  };
+  // **MODIFIED: Function to handle quantity increase with stock validation**
+  const increaseQuantity = () => {
+    const availableStock = getAvailableStock();
+
+    // Check if user is trying to exceed available stock
+    if (quantity >= availableStock) {
+      if (availableStock === 0) {
+        showToast(`Size ${selectedSize} is completely out of stock`);
+      } else if (availableStock === 1) {
+        showToast(`Only 1 item available in stock for size ${selectedSize}`);
+      } else {
+        showToast(
+          `Only ${availableStock} items available in stock for size ${selectedSize}`
+        );
+      }
+      return; // Don't increase quantity - stop here
+    }
+
+    // Increase quantity if within stock limit (no toast needed)
+    setQuantity(quantity + 1);
   };
 
+  // **MODIFIED: Function to handle quantity decrease (no toast needed)**
+  const decreaseQuantity = () => {
+    if (quantity > 1) {
+      setQuantity(quantity - 1); // Decrease only if quantity is greater than 1
+    }
+    // No toast needed for decrease - it's always valid
+  };
+
+  // **MODIFIED: Function to handle direct quantity input (improved validation)**
+  const handleQuantityInput = (e) => {
+    const inputValue = parseInt(e.target.value) || 1;
+    const availableStock = getAvailableStock();
+
+    // Handle minimum quantity (no toast for this)
+    if (inputValue <= 0) {
+      setQuantity(1);
+      return;
+    }
+
+    // Handle maximum quantity (show specific toast when user exceeds limit)
+    if (inputValue > availableStock && availableStock > 0) {
+      setQuantity(availableStock); // Set to maximum available
+
+      // Show specific message based on stock quantity
+      if (availableStock === 1) {
+        showToast(`Only 1 item available in stock for size ${selectedSize}`);
+      } else {
+        showToast(
+          `Only ${availableStock} items available in stock for size ${selectedSize}`
+        );
+      }
+      return;
+    }
+
+    // Handle out of stock case
+    if (availableStock === 0) {
+      setQuantity(1); // Reset to 1
+      showToast(`Size ${selectedSize} is completely out of stock`);
+      return;
+    }
+
+    // Set valid quantity (no toast needed)
+    setQuantity(inputValue);
+  };
+
+  // **MODIFIED: Function to add product to shopping cart with improved validation**
   // Function to add product to shopping cart
   const handleCart = (e) => {
     e.preventDefault(); // Prevent default form submission
@@ -83,16 +228,21 @@ const ProductDetails = () => {
       return;
     }
 
+    // ADD THIS NEW VALIDATION: Check if color is selected
+    if (!selectedColor) {
+      toast.error("Please select a color before adding to cart");
+      return;
+    }
+
     // Check if user is logged in
     if (isLoggedIn) {
-      // Check if the product with the same size is already in the cart
-
       // Create cart item object with all necessary data
       const newCartItem = {
         ...product, // Spread all product properties
         pid: product._id, // Product ID
         size: selectedSize, // Selected size
         quantity: quantity, // Selected quantity
+        selectedColor: selectedColor, // ADD THIS LINE: Include selected color
       };
 
       dispatch(addToCart(newCartItem)); // Dispatch action to add item to cart
@@ -137,10 +287,27 @@ const ProductDetails = () => {
                 <h2 className="text-4xl font-semibold uppercase mb-4 text-gray-800">
                   {product.name}
                 </h2>
-                {/* Availability status */}
-                <p className="text-lg text-green-600 font-semibold mb-2">
-                  Availability: <span className="text-gray-700">In Stock</span>
+
+                {/* **NEW: Stock status display** */}
+                <p className="text-lg mb-2">
+                  Availability:{" "}
+                  {selectedSize ? (
+                    isInStock() ? (
+                      <span className="text-green-600 font-semibold">
+                        In Stock ({getAvailableStock()} available)
+                      </span>
+                    ) : (
+                      <span className="text-red-600 font-semibold">
+                        Out of Stock
+                      </span>
+                    )
+                  ) : (
+                    <span className="text-gray-500">
+                      Select a size to check availability
+                    </span>
+                  )}
                 </p>
+
                 {/* Product category */}
                 <p className="text-lg text-gray-800 mb-4">
                   Category:{" "}
@@ -175,24 +342,37 @@ const ProductDetails = () => {
 
                 {/* Available colors section (if colors exist) */}
                 {product.colors && (
-                  <div className="mb-4  flex gap-4 items-center">
+                  <div className="mb-4 flex gap-4 items-center">
                     <h3 className="text-lg font-semibold text-gray-800 mb-2">
                       Available Colors:
                     </h3>
                     <div className="flex gap-2 border border-red-600 p-1">
-                      {/* Split colors by comma and create color circles */}
+                      {/* Split colors by comma and create clickable color circles */}
                       {product.colors.split(",").map((color, index) => (
                         <div
                           key={index}
-                          className="w-6 h-6 rounded-full"
+                          className={`w-8 h-8 rounded-full cursor-pointer border-2 transition-all hover:scale-110 ${
+                            selectedColor === color.trim()
+                              ? "border-blue-500 border-4" // Show blue border if this color is selected
+                              : "border-gray-300" // Show gray border if not selected
+                          }`}
                           style={{ backgroundColor: color.trim() }} // Set background color dynamically
+                          onClick={() => handleColorSelection(color)} // Make color clickable
+                          title={`Select ${color.trim()} color`} // Show tooltip on hover
                         ></div>
                       ))}
                     </div>
+                    {/* Show selected color text */}
+                    {selectedColor && (
+                      <p className="text-sm text-gray-600 ml-2">
+                        Selected:{" "}
+                        <span className="font-semibold">{selectedColor}</span>
+                      </p>
+                    )}
                   </div>
                 )}
 
-                {/* Quantity selector with + and - buttons */}
+                {/* **MODIFIED: Quantity selector with stock validation** */}
                 <div className="mt-4">
                   <h3 className="text-lg text-gray-800 font-semibold mb-2">
                     Quantity:
@@ -200,28 +380,41 @@ const ProductDetails = () => {
                   <div className="flex items-center border rounded-md overflow-hidden w-max">
                     {/* Decrease quantity button */}
                     <button
-                      onClick={() =>
-                        setQuantity(quantity > 1 ? quantity - 1 : quantity) // Prevent quantity going below 1
-                      }
+                      onClick={decreaseQuantity} // Use new decrease function
                       className="h-10 w-10 flex items-center justify-center bg-gray-200 hover:bg-gray-300 transition"
+                      disabled={quantity <= 1} // Disable if quantity is 1 or less
                     >
                       -
                     </button>
                     {/* Quantity input field */}
                     <input
-                      type="text"
+                      type="number"
+                      min="1"
+                      max={selectedSize ? getAvailableStock() : 1} // **NEW: Set max based on stock**
                       value={quantity}
-                      onChange={(e) => setQuantity(e.target.value)} // Allow direct quantity input
+                      onChange={handleQuantityInput} // Use new input handler
                       className="h-10 w-12 text-center border-l border-r focus:outline-none"
+                      disabled={!selectedSize} // **NEW: Disable if no size selected**
                     />
                     {/* Increase quantity button */}
                     <button
-                      onClick={() => setQuantity(quantity + 1)} // Increase quantity by 1
+                      onClick={increaseQuantity} // Use new increase function
                       className="h-10 w-10 flex items-center justify-center bg-gray-200 hover:bg-gray-300 transition"
+                      disabled={
+                        !selectedSize || quantity >= getAvailableStock()
+                      } // **NEW: Disable based on stock**
                     >
                       +
                     </button>
                   </div>
+                  {/* **NEW: Show stock info** */}
+                  {selectedSize && (
+                    <p className="text-sm text-gray-500 mt-1">
+                      {isInStock()
+                        ? `${getAvailableStock()} items available`
+                        : "Out of stock for this size"}
+                    </p>
+                  )}
                 </div>
 
                 {/* Action buttons section */}
@@ -229,7 +422,12 @@ const ProductDetails = () => {
                   {/* Add to cart button */}
                   <button
                     onClick={handleCart} // Call handleCart function
-                    className="px-6 py-2 bg-primary text-white rounded-lg uppercase text-sm flex items-center gap-2 hover:bg-primary-dark transition"
+                    className={`px-6 py-2 text-white rounded-lg uppercase text-sm flex items-center gap-2 transition ${
+                      selectedSize && isInStock()
+                        ? "bg-primary hover:bg-primary-dark"
+                        : "bg-gray-400 cursor-not-allowed"
+                    }`}
+                    disabled={!selectedSize || !isInStock()} // **NEW: Disable if no size or out of stock**
                   >
                     <i className="fa-solid fa-bag-shopping" />
                     Add to Cart

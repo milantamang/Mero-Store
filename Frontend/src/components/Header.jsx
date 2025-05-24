@@ -135,7 +135,7 @@ const Header = () => {
               dispatch(close());
             }}
           >
-            children
+            Kids
           </Link>
         </div>
       </nav>

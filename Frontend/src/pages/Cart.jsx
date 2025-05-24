@@ -18,17 +18,15 @@ const Cart = () => {
     ? JSON.parse(localStorage.getItem("user"))
     : [];
 
-
   const { cartItems, cartError } = useSelector((state) => ({
     ...state.cart,
   }));
-  
-   useEffect(() => {
+
+  useEffect(() => {
     dispatch(fetchCart());
   }, [dispatch]);
 
   const increaseQty = (item) => {
-    
     const updatedItem = {
       ...item,
       pid: item.product,
@@ -37,23 +35,22 @@ const Cart = () => {
     dispatch(addToCart(updatedItem));
   };
 
-  const decreaseQty = (id,quantity) => {
-    if (quantity > 1)
-    { dispatch(decreaseQuantity(id)); }
-    else {
+  const decreaseQty = (id, quantity) => {
+    if (quantity > 1) {
+      dispatch(decreaseQuantity(id));
+    } else {
       // If quantity is 1, remove the item from the cart
-     removeItem(id)
+      removeItem(id);
     }
-   
   };
-  
+
   const removeItem = (id) => {
     if (cartItems.length === 1) {
       // If only one item is in the cart, delete the entire cart
-      dispatch(deleteCart())
+      dispatch(deleteCart());
     } else {
-      dispatch(removeFromCart(id))
-           }
+      dispatch(removeFromCart(id));
+    }
   };
 
   // creatting order
@@ -100,7 +97,8 @@ const Cart = () => {
               <thead className="whitespace-nowrap text-left">
                 <tr>
                   <th className="text-base text-primary p-4">Description</th>
-                  <th className="text-base text-primary p-4">Size</th> 
+                  <th className="text-base text-primary p-4">Size</th>
+                  <th className="text-base text-primary p-4">Color</th>
                   <th className="text-base text-primary p-4">Quantity</th>
                   <th className="text-base text-primary p-4">Price</th>
                 </tr>
@@ -136,19 +134,38 @@ const Cart = () => {
                           </td>
                           <td className="py-6 px-4">
                             <div>
-                                <p className="text-md font-bold text-[#333]">
-                                  {item.size}
-                                </p>
-
-                               
-                              </div>
+                              <p className="text-md font-bold text-[#333]">
+                                {item.size}
+                              </p>
+                            </div>
+                          </td>
+                          {/* COLOR COLUMN: */}
+                          <td className="py-6 px-4">
+                            <div className="flex items-center gap-2">
+                              {/* Show color circle */}
+                              {item.selectedColor && (
+                                <div
+                                  className="w-6 h-6 rounded-full border-2 border-gray-300"
+                                  style={{
+                                    backgroundColor: item.selectedColor,
+                                  }}
+                                  title={item.selectedColor}
+                                ></div>
+                              )}
+                              {/* Show color name */}
+                              <p className="text-md font-bold text-[#333]">
+                                {item.selectedColor || "No color selected"}
+                              </p>
+                            </div>
                           </td>
                           <td className="py-6 px-4">
                             <div className="flex divide-x border w-max">
                               <button
                                 type="button"
                                 className="bg-gray-100 px-4 py-2 font-semibold"
-                                onClick={() => decreaseQty(item.product,item.quantity)}
+                                onClick={() =>
+                                  decreaseQty(item.product, item.quantity)
+                                }
                               >
                                 <svg
                                   xmlns="http://www.w3.org/2000/svg"
@@ -230,7 +247,7 @@ const Cart = () => {
               <li className="flex flex-wrap gap-4 text-md py-4 font-bold">
                 Total{" "}
                 <span className="ml-auto">
-                  Rs. {(totalPrice() ).toLocaleString()}.00
+                  Rs. {totalPrice().toLocaleString()}.00
                 </span>
               </li>
             </ul>

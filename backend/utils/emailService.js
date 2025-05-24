@@ -263,9 +263,7 @@ const sendWelcomeEmail = async (user) => {
         <li>Enjoy a personalized shopping experience</li>
       </ul>
       
-      <div style="text-align: center; margin: 30px 0;">
-        <a href="${process.env.FRONTEND_URL}" style="background-color: #201658; color: white; padding: 12px 25px; text-decoration: none; border-radius: 4px; font-weight: bold;">Start Shopping</a>
-      </div>
+     
       
       <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 14px;">
         <p>Thank you for choosing Mero Store!</p>
