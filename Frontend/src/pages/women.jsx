@@ -5,7 +5,6 @@ import { FaCartArrowDown } from "react-icons/fa";
 import { FaHeart } from "react-icons/fa6";
 import { getProducts } from "../redux/product/productSlice";
 import { toast } from "react-toastify";
-import { addToCart } from "../redux/cart/cartSlice";
 
 export default function Women({ category: propCategory }) {
   const { products, error } = useSelector((state) => ({ ...state.products }));
@@ -47,33 +46,15 @@ export default function Women({ category: propCategory }) {
     }
   }, [error]);
 
+  // MODIFIED: Function to redirect to product details instead of adding to cart directly
   const addToCartHandler = (product) => {
+    // Check if user is logged in first
     if (isLoggedIn) {
-      // Get the first size from the product.size array
-      const firstSize =
-        product.size && product.size.length > 0 ? product.size[0] : null;
-      const firstColor =
-        product.colors && product.colors.length > 0 ? product.colors[0] : null;
-      if (!firstSize) {
-        toast.error("No size available for this product");
-        return;
-      }
-
-      const cartItem = {
-        pid: product._id,
-        name: product.name,
-        price: product.price,
-        quantity: 1,
-        category: product.category,
-        image: product.image,
-        size: firstSize,
-        color: firstColor,
-      };
-
-      // Dispatch the addToCartAsync action
-      dispatch(addToCart(cartItem));
+      // Redirect to product details page where user can select size, color, quantity
+      navigate(`/products/${product._id}`);
     } else {
-      toast.error("Please log in to add to cart");
+      // If not logged in, ask user to log in first
+      toast.error("Please log in to add items to cart");
       navigate("/login");
     }
   };
@@ -135,9 +116,11 @@ export default function Women({ category: propCategory }) {
               </Link>
               {/* Action Buttons */}
               <div className="flex justify-end pt-4 bg-gray-100 items-center gap-4 px-4 pb-4">
+                {/* MODIFIED: Button now redirects to product details instead of adding to cart directly */}
                 <button
                   onClick={() => addToCartHandler(product)}
                   className="flex p-2 items-center justify-center w-8 h-8 text-white bg-red-700 rounded-full hover:bg-primary transition duration-300 focus:outline-none"
+                  title="Select options and add to cart" // Added helpful tooltip
                 >
                   <FaCartArrowDown className="text-xl" />
                 </button>

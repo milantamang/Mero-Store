@@ -6,7 +6,6 @@ import { FaCartArrowDown } from "react-icons/fa"; // Cart icon
 import { FaHeart } from "react-icons/fa6"; // Heart icon for wishlist
 import { getProducts } from "../redux/product/productSlice"; // Redux action to fetch products
 import { toast } from "react-toastify"; // Notification library
-import { addToCart } from "../redux/cart/cartSlice"; // Redux action for cart
 import ReactPaginate from "react-paginate"; // Pagination component
 import { addToWishlist } from "../redux/wishlist/wishlistSlice"; // Redux action for wishlist
 import axios from "axios"; // For API calls
@@ -125,38 +124,15 @@ export default function Products() {
     applIFilters();
   }, [products, selectedCategory]);
 
-  // Function to add product to shopping cart
-  const addToCartHandler = (product) => {
+  // MODIFIED: Function to redirect to product details page instead of adding to cart directly
+  const handleAddToCartRedirect = (product) => {
+    // Check if user is logged in first
     if (isLoggedIn) {
-      /* Email verification check (commented out)
-      if (user.email_verified === false) {
-        toast.error("Please verify your account to add to cart");
-        return;
-      } */
-      
-      // Get the first available size from product
-      const firstSize = product.size && product.size.length > 0 ? product.size[0] : null;
-      
-      if (!firstSize) {
-        toast.error("No size available for this product");
-        return;
-      }
-
-      // Create cart item object
-      const cartItem = {
-        pid: product._id,
-        name: product.name,
-        price: product.price,
-        quantity: 1,
-        category: product.category,
-        image: product.image,
-        size: firstSize,
-      };
-
-      // Add item to cart using Redux
-      dispatch(addToCart(cartItem));
+      // Redirect to product details page where user can select size, color, quantity
+      navigate(`/products/${product._id}`);
     } else {
-      toast.error("Please log in to add to cart");
+      // If not logged in, ask user to log in first
+      toast.error("Please log in to add items to cart");
       navigate("/login");
     }
   };
@@ -305,20 +281,35 @@ export default function Products() {
                             <p className="text-md text-primary font-semibold">
                               Rs. {product.price}
                             </p>
+
+                            {/* ADDED: Product Colors Display */}
+                            {product.colors && (
+                              <div className="flex gap-2 mt-2">
+                                {product.colors.split(",").map((color, index) => (
+                                  <span
+                                    key={index}
+                                    className="w-6 h-6 rounded-full"
+                                    style={{ backgroundColor: color.trim() }} // trim() removes extra spaces
+                                  ></span>
+                                ))}
+                                <p>{product.colors}</p>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </Link>
 
                       {/* Action buttons: Add to Cart and Wishlist */}
                       <div className="flex justify-end pt-4 bg-gray-100 items-center gap-4 px-4 pb-4">
-                        {/* Add to Cart button */}
+                        {/* MODIFIED: Add to Cart button now redirects to product details */}
                         <button
-                          onClick={() => addToCartHandler(product)}
+                          onClick={() => handleAddToCartRedirect(product)}
                           className="flex p-2 items-center justify-center w-8 h-8 text-white bg-red-700 rounded-full hover:bg-primary transition duration-300 focus:outline-none"
+                          title="Select options and add to cart" // Added helpful tooltip
                         >
                           <FaCartArrowDown className="text-xl" />
                         </button>
-                        {/* Add to Wishlist button */}
+                        {/* Add to Wishlist button - unchanged */}
                         <button
                           onClick={() => addWishlist(product)}
                           className="flex p-2 items-center justify-center w-8 h-8 text-white bg-red-700 rounded-full hover:bg-primary transition duration-300 focus:outline-none"

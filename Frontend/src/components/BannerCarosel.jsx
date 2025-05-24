@@ -63,7 +63,7 @@ const BannerCarosel = () => {
       <div className="relative text-red-800 bg-white overflow-hidden py-3">
         <div
           className="whitespace-nowrap flex items-center animate-scroll"
-          style={{ animation: "scroll 15s linear infinite" }}
+          style={{ animation: "scroll 20s linear infinite" }}
         >
           {banners.length > 0 && (
             <span className="mx-4 text-2xl font-semibold">

@@ -1,16 +1,21 @@
 import React, { useEffect } from "react";
 import { toast } from "react-toastify";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom"; // ADDED: Import useNavigate for redirection
 import { MdDeleteForever } from "react-icons/md";
 import { FaCartArrowDown } from "react-icons/fa";
 import { clearError, userWishlist } from "../redux/wishlist/wishlistSlice";
 import { deleteWishlist } from "../redux/wishlist/wishlistSlice";
+// import { useNavigate } from "react-router-dom"; // ADDED: For navigation
+import { getProducts } from "../redux/product/productSlice"; // ADDED: To fetch products
 
 const Wishlist = () => {
   const { wishitems, error } = useSelector((state) => ({ ...state.wishlist }));
+  const { isLoggedIn } = useSelector((state) => state.user); // ADDED: Get login status
+  const { products } = useSelector((state) => state.products); // ADDED: Get all products to find product ID
   const dispatch = useDispatch();
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // ADDED: Initialize navigate hook
+
   useEffect(() => {
     if (error) {
       toast.error(error);
@@ -20,9 +25,35 @@ const Wishlist = () => {
     dispatch(userWishlist());
   }, [dispatch, toast, error]);
 
+  // Function to delete item from wishlist
   const deleteWishlistHandler = (id) => {
     dispatch(deleteWishlist({ id }));
   };
+
+  // ADDED: Function to redirect to product details page for cart functionality
+  const handleAddToCartRedirect = (item) => {
+    // Check if user is logged in first
+    if (isLoggedIn) {
+      // Find the product ID by matching the product name
+      const matchingProduct = products.find(
+        (product) => product.name === item.product_name
+      );
+      
+      if (matchingProduct) {
+        // If we found the matching product, redirect to its details page
+        navigate(`/products/${matchingProduct._id}`);
+      } else {
+        // If product not found, redirect to products page with a helpful message
+        navigate('/products');
+        toast.info(`Search for "${item.product_name}" to add it to cart with your preferred options`);
+      }
+    } else {
+      // If not logged in, ask user to log in first
+      toast.error("Please log in to add items to cart");
+      navigate("/login");
+    }
+  };
+
   return (
     <>
       <div className="bg-gray-100">
@@ -68,9 +99,16 @@ const Wishlist = () => {
                         Rs.{item.product_price}
                       </p>
                       <div className="flex justify-between items-center my-2 ">
-                        <button className="flex items-center justify-center p-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors shadow-md">
+                        {/* MODIFIED: Add to Cart button now has functionality and redirects */}
+                        <button 
+                          onClick={() => handleAddToCartRedirect(item)}
+                          className="flex items-center justify-center p-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors shadow-md"
+                          title="Select options and add to cart" // Added helpful tooltip
+                        >
                           <FaCartArrowDown className="mr-2" />
                         </button>
+                        
+                        {/* Delete button - unchanged */}
                         <button
                           onClick={() => deleteWishlistHandler(item._id)}
                           className="flex items-center justify-center p-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors shadow-md"
