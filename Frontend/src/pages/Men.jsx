@@ -1,16 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { FaCartArrowDown } from "react-icons/fa";
 import { FaHeart } from "react-icons/fa6";
 import { getProducts } from "../redux/product/productSlice";
 import { toast } from "react-toastify";
 import { addToCart } from "../redux/cart/cartSlice";
-import { addToWishlist, userWishlist } from "../redux/wishlist/wishlistSlice";
 
 export default function Men({ category: propCategory }) {
-  const { products, error } = useSelector((state) => state.products);
-  const { wishitems } = useSelector((state) => state.wishlist);
+  const { products, error } = useSelector((state) => ({ ...state.products }));
   const { category: routeCategory } = useParams();
   const { isLoggedIn } = useSelector((state) => state.user);
   const [list, setList] = useState([]);
@@ -20,13 +18,7 @@ export default function Men({ category: propCategory }) {
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  
-  useEffect(() => {
-    if (isLoggedIn) {
-      dispatch(userWishlist());
-    }
-  }, [dispatch, isLoggedIn]);
-  
+
   useEffect(() => {
     dispatch(getProducts()); // Fetch all products
   }, [dispatch]);
@@ -55,76 +47,44 @@ export default function Men({ category: propCategory }) {
     }
   }, [error]);
 
-  // Check if product is in wishlist
-  const isProductInWishlist = (productName) => {
-    if (!wishitems || !Array.isArray(wishitems) || wishitems.length === 0) {
-      return false;
-    }
-    return wishitems.some(item => 
-      item.product_name && item.product_name.toLowerCase() === productName.toLowerCase()
-    );
-  };
-
-  // Add to wishlist handler
-  const handleAddToWishlist = (product) => {
-    if (!isLoggedIn) {
-      toast.error("Please log in to add to wishlist");
-      navigate("/login");
-      return;
-    }
-
-    // Check if already in wishlist
-    if (isProductInWishlist(product.name)) {
-      toast.info("This product is already in your wishlist");
-      return;
-    }
-
-    // Add to wishlist
-    dispatch(
-      addToWishlist({
-        product_name: product.name,
-        product_price: product.price,
-        product_category: product.category,
-        product_image: product.image,
-      })
-    );
-  };
-
   const addToCartHandler = (product) => {
-    if (isLoggedIn) {
-      // Get the first size from the product.size array
-      const firstSize =
-        product.size && product.size.length > 0 ? product.size[0] : null;
-
-      if (!firstSize) {
-        toast.error("No size available for this product");
-        return;
+      if (isLoggedIn) {
+        // Get the first size from the product.size array
+        const firstSize = product.size && product.size.length > 0 ? product.size[0] : null;
+        const firstColor = product.colors && product.colors.length > 0 ? product.colors[0] : null;
+        if (!firstSize) {
+          toast.error("No size available for this product");
+          return;
+        }
+  
+        const cartItem = {
+          pid: product._id,
+          name: product.name,
+          price: product.price,
+          quantity: 1, 
+          category: product.category,
+          image: product.image,
+          size: firstSize,
+          color: firstColor,
+        };
+  
+        // Dispatch the addToCartAsync action
+        dispatch(addToCart(cartItem));
+      } else {
+        toast.error("Please log in to add to cart");
+        navigate("/login");
       }
-
-      const cartItem = {
-        pid: product._id,
-        name: product.name,
-        price: product.price,
-        quantity: 1,
-        category: product.category,
-        image: product.image,
-        size: firstSize,
-      };
-
-      // Dispatch the addToCartAsync action
-      dispatch(addToCart(cartItem));
-    } else {
-      toast.error("Please log in to add to cart");
-      navigate("/login");
-    }
-  };
+    };
 
   return (
     <div className="bg-gray-50 overflow-x-hidden py-10">
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+       
+
         <h1 className="text-3xl mb-4 font-bold tracking-tight text-red-600 pt-6  text-center border-b-2 inline-table  border-red-600 uppercase">
-          {filteredCategory ? `${filteredCategory} products` : "Our Products"}
-        </h1>
+  {filteredCategory ? `${filteredCategory} products` : "Our Products"}
+</h1>
+
 
         <div className="grid grid-cols-1 pb-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6">
           {list.map((product) => (
@@ -155,7 +115,7 @@ export default function Men({ category: propCategory }) {
                     {/* Product Colors */}
                     {product.colors && (
                       <div className="flex gap-2 mt-2">
-                        {product.colors.split(",").map((color, index) => (
+                        {product.colors.map((color, index) => (
                           <span
                             key={index}
                             className="w-6 h-6 rounded-full"
@@ -176,14 +136,7 @@ export default function Men({ category: propCategory }) {
                 >
                   <FaCartArrowDown className="text-xl" />
                 </button>
-                <button 
-                  onClick={() => handleAddToWishlist(product)}
-                  className={`flex p-2 items-center justify-center w-8 h-8 text-white ${
-                    isProductInWishlist(product.name)
-                      ? "bg-red-500" // Already in wishlist
-                      : "bg-red-700" // Not in wishlist
-                  } rounded-full hover:bg-primary transition duration-300 focus:outline-none`}
-                >
+                <button className="flex p-2 items-center justify-center w-8 h-8 text-white bg-red-700 rounded-full hover:bg-primary transition duration-300 focus:outline-none">
                   <FaHeart className="text-xl" />
                 </button>
               </div>

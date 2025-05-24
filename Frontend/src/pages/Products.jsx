@@ -1,161 +1,125 @@
 // Import necessary React hooks and libraries
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom"; // React Router for navigation and links
-import { useDispatch, useSelector } from "react-redux"; // Redux hooks for state management
-import { FaCartArrowDown } from "react-icons/fa"; // Cart icon from Font Awesome
+import { Link, useNavigate } from "react-router-dom"; // React Router for navigation
+import { useDispatch, useSelector } from "react-redux"; // Redux for state management
+import { FaCartArrowDown } from "react-icons/fa"; // Cart icon
 import { FaHeart } from "react-icons/fa6"; // Heart icon for wishlist
 import { getProducts } from "../redux/product/productSlice"; // Redux action to fetch products
-import { toast } from "react-toastify"; // Library for showing notifications
-import { addToCart } from "../redux/cart/cartSlice"; // Redux action to add item to cart
-import ReactPaginate from "react-paginate"; // Library for pagination functionality
-import { addToWishlist, userWishlist } from "../redux/wishlist/wishlistSlice"; // Redux actions for wishlist
-import axios from "axios"; // Library for making API calls
+import { toast } from "react-toastify"; // Notification library
+import { addToCart } from "../redux/cart/cartSlice"; // Redux action for cart
+import ReactPaginate from "react-paginate"; // Pagination component
+import { addToWishlist } from "../redux/wishlist/wishlistSlice"; // Redux action for wishlist
+import axios from "axios"; // For API calls
 
 export default function Products() {
   // Get data from Redux store (global state)
-  const { products, error } = useSelector((state) => state.products); // Product data and error state
-  const { wishitems } = useSelector((state) => state.wishlist); // User's wishlist items
-  const { isLoggedIn, user } = useSelector((state) => state.user); // User authentication state
+  const { products, error } = useSelector((state) => ({ ...state.products }));
+  const { wishitems } = useSelector((state) => ({ ...state.wishlist }));
+  const { isLoggedIn, user } = useSelector((state) => state.user);
 
   // Local state variables for component functionality
-  const [list, setList] = useState([]); // Filtered list of products to display
-  const [categories, setCategories] = useState(); // Available product categories
-  const [selectedCategory, setSelectedCategory] = useState(); // Currently selected category filter
+  const [list, setList] = useState(products); // Filtered products to display
+  const [categories, setCategories] = useState(); // Available categories from database
+  const [selectedCategory, setSelectedCategory] = useState(); // Currently selected category
   const [priceRange, setPriceRange] = useState(); // Selected price range for filtering
-  const [price, setPrice] = useState(); // Current price limit for range slider
-  const [keywords, setKeywords] = useState(""); // Search keywords entered by user
-  const [currentPage, setCurrentPage] = useState(0); // Current page number for pagination
-  const itemsPerPage = 6; // Number of products to show per page
+  const [price, setPrice] = useState(); // Current price limit
+  const [keywords, setKeywords] = useState(""); // Search keywords
+  const [currentPage, setCurrentPage] = useState(0); // Current page for pagination
+  const itemsPerPage = 6; // Number of products per page
 
   // Hooks for navigation and Redux actions
-  const navigate = useNavigate(); // Hook for programmatic navigation
-  const dispatch = useDispatch(); // Hook to dispatch Redux actions
-
-  // Effect hook: Load user's wishlist data when component mounts or login status changes
-  useEffect(() => {
-    if (isLoggedIn) {
-      console.log("Loading wishlist data...");
-      dispatch(userWishlist()) // Fetch user's wishlist from server
-        .unwrap()
-        .then((data) => {
-          console.log("Wishlist loaded successfully:", data);
-        })
-        .catch((error) => {
-          console.error("Error loading wishlist:", error);
-        });
-    }
-  }, [isLoggedIn, dispatch]);
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   // Calculate maximum price from all products for price range slider
-  let priceArr = products.map((item) => item.price); // Extract all product prices
-  let maxPrice = Math.max(...priceArr); // Find the highest price
-  
-  // Effect hook: Set initial price range when maximum price is calculated
+  let priceArr = products.map((item) => item.price);
+  let maxPrice = Math.max(...priceArr);
+
+  // Set initial price range when max price is calculated
   useEffect(() => {
     if (maxPrice) {
-      setPrice(maxPrice); // Set price slider to maximum value initially
+      setPrice(maxPrice);
     }
   }, [maxPrice]);
 
-  // Effect hook: Fetch all products when component loads
+  // Fetch all products when component loads
   useEffect(() => {
-    dispatch(getProducts()); // Dispatch action to get products from server
+    dispatch(getProducts());
   }, [dispatch]);
 
-  // Effect hook: Update displayed list when products data changes
+  // Update product list when products data changes
   useEffect(() => {
-    setList(products); // Set initial product list
+    setList(products);
   }, [products]);
 
-  // Effect hook: Show error notifications if any errors occur
+  // Show error notifications if any errors occur
   useEffect(() => {
     if (error) {
-      toast.error(error); // Display error message to user
+      toast.error(error);
     }
   }, [error]);
 
-  // Effect hook: Filter products based on search keywords and selected category
+  // Filter products based on search keywords and selected category
   useEffect(() => {
     if (products) {
-      // Filter products by search keywords (case-insensitive)
+      // Filter by search keywords (case-insensitive)
       const filteredProducts = products.filter((product) =>
         product.name.toLowerCase().includes(keywords.toLowerCase())
       );
+      
       // Further filter by category if one is selected
       if (selectedCategory) {
         setList(
           filteredProducts.filter((item) => item.category === selectedCategory)
         );
       } else {
-        setList(filteredProducts); // Show all filtered products if no category selected
+        setList(filteredProducts);
       }
     }
   }, [keywords, selectedCategory, products]);
 
-  // Effect hook: Fetch available categories from server when component loads
+  // Fetch available categories from server when component loads
   useEffect(() => {
     const getCategories = async () => {
       const response = await axios.get(
         "http://localhost:5000/api/v1/getcategory"
       );
-      setCategories(response.data.categories); // Store categories in state
+      setCategories(response.data.categories);
     };
     getCategories();
   }, []);
 
   // Function to handle category filter selection
   const filterCategory = (cat_name) => {
-    setSelectedCategory(cat_name); // Update selected category
-  };
-
-  // Function to check if a product is already in user's wishlist
-  const isProductInWishlist = (productName) => {
-    // Safety check to handle undefined or empty wishlist
-    if (!wishitems || !Array.isArray(wishitems) || wishitems.length === 0) {
-      return false;
-    }
-
-    // Debug logs to track what we're comparing
-    console.log("Checking if product exists:", productName);
-    console.log(
-      "Current wishlist items:",
-      wishitems.map((item) => item.product_name)
-    );
-
-    // Check if product exists in wishlist (case-insensitive comparison)
-    return wishitems.some(item => 
-    item.product_name && item.product_name.toLowerCase() === productName.toLowerCase()
-  );
+    setSelectedCategory(cat_name);
   };
 
   // Function to handle price range filter
   const handlePrice = (e) => {
-    setPrice(e.target.value); // Update displayed price
-    setPriceRange(e.target.value); // Update price range for filtering
+    setPrice(e.target.value);
+    setPriceRange(e.target.value);
 
     let priceRangeValue = e.target.value;
     let priceFilter = products;
 
-    // Filter products by selected price range
     if (priceRangeValue) {
       priceFilter = products.filter((item) => item.price <= priceRangeValue);
-      setList(priceFilter); // Update displayed product list
+      setList(priceFilter);
     }
   };
 
-  // Effect hook: Apply category filters to product list
+  // Apply category filters to product list
   useEffect(() => {
     const applIFilters = () => {
       let productLists = products;
 
-      // Filter by selected category
       if (selectedCategory) {
         productLists = productLists.filter(
           (item) => item.category === selectedCategory
         );
         setList(productLists);
       } else {
-        setList(products); // Show all products if no category selected
+        setList(products);
       }
     };
     applIFilters();
@@ -164,79 +128,75 @@ export default function Products() {
   // Function to add product to shopping cart
   const addToCartHandler = (product) => {
     if (isLoggedIn) {
-      // Get the first available size from product (default selection)
-      const firstSize =
-        product.size && product.size.length > 0 ? product.size[0] : null;
-
-      // Check if product has available sizes
+      /* Email verification check (commented out)
+      if (user.email_verified === false) {
+        toast.error("Please verify your account to add to cart");
+        return;
+      } */
+      
+      // Get the first available size from product
+      const firstSize = product.size && product.size.length > 0 ? product.size[0] : null;
+      
       if (!firstSize) {
         toast.error("No size available for this product");
         return;
       }
 
-      // Create cart item object with necessary data
+      // Create cart item object
       const cartItem = {
-        pid: product._id, // Product ID
+        pid: product._id,
         name: product.name,
         price: product.price,
-        quantity: 1, // Default quantity
+        quantity: 1,
         category: product.category,
         image: product.image,
-        size: firstSize, // Use first available size
+        size: firstSize,
       };
 
-      // Dispatch action to add item to cart
+      // Add item to cart using Redux
       dispatch(addToCart(cartItem));
     } else {
       toast.error("Please log in to add to cart");
-      navigate("/login"); // Redirect to login page
+      navigate("/login");
     }
   };
 
   // Function to add product to wishlist
   const addWishlist = (product) => {
-    // Check if user is logged in
-    if (!isLoggedIn) {
-      toast.error("Please log in to add to wishlist");
-      navigate("/login");
-      return;
+    if (isProductInWishlist(product._id)) {
+      toast.error("Product already added to wishlist");
+    } else {
+      dispatch(
+        addToWishlist({
+          product_name: product.name,
+          product_price: product.price,
+          product_category: product.category,
+          product_image: product.image,
+        })
+      );
     }
-
-    // Optional: Check if product is already in wishlist (commented out)
-    // if (isProductInWishlist(product.name)) {
-    //   toast.info("This product is already in your wishlist");
-    //   return; // Don't dispatch the action at all
-    // }
-
-    // Dispatch action to add product to wishlist
-    dispatch(
-      addToWishlist({
-        product_name: product.name,
-        product_price: product.price,
-        product_category: product.category,
-        product_image: product.image,
-      })
-    );
   };
 
-  // Calculate products to display on current page
-  const startIndex = currentPage * itemsPerPage; // Starting index for current page
-  const selectedProducts = list.slice(startIndex, startIndex + itemsPerPage); // Products for current page
+  // Check if product is already in wishlist
+  const isProductInWishlist = (productId) => {
+    return wishitems.some((item) => item.product_id === productId);
+  };
 
-  // Function to handle pagination page change
+  // Pagination calculations
+  const startIndex = currentPage * itemsPerPage;
+  const selectedProducts = list.slice(startIndex, startIndex + itemsPerPage);
+
+  // Handle pagination page change
   const handlePageClick = (event) => {
-    setCurrentPage(event.selected); // Update current page number
+    setCurrentPage(event.selected);
   };
 
-  // JSX: Component's user interface
   return (
     <>
-      {/* Main container with background and overflow handling */}
       <div className="bg-gray-100 overflow-x-hidden overflow-hidden">
         <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Header section with title and search bar */}
+          {/* Header section with title and search */}
           <div className="flex items-baseline justify-between border-b border-blue-800 pb-6 pt-10">
-            {/* Page title */}
             <h1 className="text-3xl font-bold tracking-tight text-red-600 uppercase">
               Products
             </h1>
@@ -247,7 +207,7 @@ export default function Products() {
                 type="text"
                 name="search"
                 value={keywords}
-                onChange={(e) => setKeywords(e.target.value)} // Update search keywords
+                onChange={(e) => setKeywords(e.target.value)}
                 className="w-[600px] py-2 text-center shadow border-primary"
                 placeholder="Search products"
               />
@@ -260,63 +220,64 @@ export default function Products() {
             </form>
           </div>
 
-          {/* Main content section */}
           <section aria-labelledby="products-heading" className="pb-24 pt-2">
             <div className="grid grid-cols-1 gap-x-8 gap-y-8 lg:grid-cols-4">
-              {/* Sidebar with filters */}
+              {/* LEFT SIDEBAR: Filters by Category and Price */}
               <div className="flex flex-col w-1/3">
-                {/* Category filter section */}
+                
+                {/* Category Filter Section */}
                 <div className="w-full">
                   <div className="category_box">
                     <h3 className="text-xl border-b-2 border-red-800 font-mono mb-3 font-bold">
                       Category
                     </h3>
                     <div className="py-2 text-lg font-medium">
-                      {/* "All" category option */}
-                      <span
-                        onClick={() => filterCategory()} // Clear category filter
-                        className="border pt-1 border-blue-900 px-1 pe-[72px]"
+                      {/* FIXED: Removed flex styling to prevent "|" cursor issue */}
+                      <div
+                        onClick={() => filterCategory()}
+                        className="block border my-2 py-2 border-blue-900 px-1 hover:bg-blue-900 hover:text-white cursor-pointer"
+                        style={{ cursor: 'pointer' }}
                       >
                         All
-                      </span>
-                      {/* Map through available categories */}
+                      </div>
+                      {/* Map through categories from database */}
                       {categories &&
                         categories.map((cat) => (
-                          <span
-                            className="flex flex-col border my-2 py-2 border-blue-900 px-1 hover:bg-blue-900 hover:text-white cursor-pointer"
+                          <div
+                            className="block border my-2 py-2 border-blue-900 px-1 hover:bg-blue-900 hover:text-white cursor-pointer"
                             key={cat._id}
-                            onClick={() => setSelectedCategory(cat.name)} // Set selected category
+                            onClick={() => setSelectedCategory(cat.name)}
+                            style={{ cursor: 'pointer' }}
                           >
                             {cat.name}
-                          </span>
+                          </div>
                         ))}
                     </div>
                   </div>
                 </div>
 
-                {/* Price filter section */}
-                <div className="w-full ">
+                {/* Price Filter Section */}
+                <div className="w-full">
                   <div className="price_box">
-                    <h3 className="text-xl border-b-2 border-red-800  font-mono     font-bold  my-2">
-                      {" "}
-                      Price{" "}
+                    <h3 className="text-xl border-b-2 border-red-800 font-mono font-bold my-2">
+                      Price
                     </h3>
-
-                    {/* Price range slider */}
+                    {/* Price range slider with pointer cursor */}
                     <input
                       type="range"
                       min={1}
                       value={priceRange}
                       max={maxPrice}
-                      onChange={handlePrice} // Handle price range change
+                      onChange={handlePrice}
+                      style={{ cursor: 'pointer' }}
+                      className="cursor-pointer"
                     />
-                    {/* Display current price limit */}
-                    <h2> Rs.{price} </h2>
+                    <h2>Rs.{price}</h2>
                   </div>
                 </div>
               </div>
 
-              {/* Products grid section */}
+              {/* RIGHT SIDE: Products Grid */}
               <div className="w-full lg:col-span-3">
                 <div className="grid grid-cols-1 pb-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6">
                   {/* Map through products for current page */}
@@ -328,7 +289,6 @@ export default function Products() {
                     >
                       {/* Product image and details (clickable link) */}
                       <Link to={`/products/${product._id}`}>
-                        {/* Product image with hover effect */}
                         <div className="w-full p-2 bg-white h-72 overflow-hidden flex items-center justify-center">
                           <img
                             src={product.image}
@@ -337,7 +297,6 @@ export default function Products() {
                           />
                         </div>
 
-                        {/* Product information */}
                         <div className="pt-4 pb-3 px-4 bg-gray-100 border-b">
                           <h4 className="uppercase font-semibold text-lg mb-1 text-gray-700 hover:text-primary transition">
                             {product.name}
@@ -350,23 +309,19 @@ export default function Products() {
                         </div>
                       </Link>
 
-                      {/* Action buttons (Add to Cart and Wishlist) */}
+                      {/* Action buttons: Add to Cart and Wishlist */}
                       <div className="flex justify-end pt-4 bg-gray-100 items-center gap-4 px-4 pb-4">
-                        {/* Add to cart button */}
+                        {/* Add to Cart button */}
                         <button
-                          onClick={() => addToCartHandler(product)} // Add product to cart
+                          onClick={() => addToCartHandler(product)}
                           className="flex p-2 items-center justify-center w-8 h-8 text-white bg-red-700 rounded-full hover:bg-primary transition duration-300 focus:outline-none"
                         >
                           <FaCartArrowDown className="text-xl" />
                         </button>
-                        {/* Add to wishlist button with dynamic styling */}
+                        {/* Add to Wishlist button */}
                         <button
-                          onClick={() => addWishlist(product)} // Add product to wishlist
-                          className={`flex p-2 items-center justify-center w-8 h-8 text-white ${
-                            isProductInWishlist(product.name)
-                              ? "bg-red-500" // Different color if already in wishlist
-                              : "bg-red-700" // Default color if not in wishlist
-                          } rounded-full hover:bg-primary transition duration-300 focus:outline-none`}
+                          onClick={() => addWishlist(product)}
+                          className="flex p-2 items-center justify-center w-8 h-8 text-white bg-red-700 rounded-full hover:bg-primary transition duration-300 focus:outline-none"
                         >
                           <FaHeart className="text-xl" />
                         </button>
@@ -374,7 +329,8 @@ export default function Products() {
                     </div>
                   ))}
                 </div>
-                {/* Pagination component */}
+
+                {/* Pagination Component */}
                 <ReactPaginate
                   previousLabel={
                     <span className="prev py-1 px-3 rounded-md">Previous</span>
@@ -383,10 +339,10 @@ export default function Products() {
                     <span className="next py-1 px-3 rounded-md">Next</span>
                   }
                   breakLabel={<span className="break">...</span>}
-                  pageCount={Math.ceil(list.length / itemsPerPage)} // Calculate total pages
+                  pageCount={Math.ceil(list.length / itemsPerPage)}
                   marginPagesDisplayed={2}
                   pageRangeDisplayed={3}
-                  onPageChange={handlePageClick} // Handle page change
+                  onPageChange={handlePageClick}
                   containerClassName={"pagination"}
                   activeClassName={"active"}
                   previousClassName={"prev"}
